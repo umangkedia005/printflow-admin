@@ -55,7 +55,7 @@ function LoginPage() {
           <div style={{ width: '36px', height: '36px', background: '#0A0A0A', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ color: '#fff', fontSize: '18px', fontWeight: 800 }}>P</span>
           </div>
-          <span style={{ fontWeight: 800, fontSize: '18px', fontFamily: 'system-ui' }}>PrintFlow Admin</span>
+          <span style={{ fontWeight: 800, fontSize: '18px', fontFamily: 'system-ui' }}>No Limit Studio Admin</span>
         </div>
         <p style={{ color: '#6B7280', fontSize: '13px', marginBottom: '32px' }}>Sign in with your authorized Google account</p>
         {error && <div style={{ color: '#DC2626', fontSize: '13px', marginBottom: '16px', background: '#FEF2F2', padding: '10px', borderRadius: '8px' }}>{error}</div>}
@@ -123,7 +123,7 @@ function AdminDashboard({ user }) {
       {/* Header */}
       <div style={{ background: '#0A0A0A', padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '56px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-          <span style={{ color: '#fff', fontWeight: 800, fontSize: '16px' }}>PrintFlow Admin</span>
+          <span style={{ color: '#fff', fontWeight: 800, fontSize: '16px' }}>No Limit Studio Admin</span>
           <div style={{ display: 'flex', gap: '4px' }}>
             {NAV.map(n => (
               <button key={n.id} onClick={() => setActiveTab(n.id)}
