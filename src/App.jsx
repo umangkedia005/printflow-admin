@@ -3,7 +3,7 @@ import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from
 import { auth } from './firebase'
 
 const provider = new GoogleAuthProvider()
-import { fetchAllOrders, fetchAllStores, updateOrderStatus } from './api'
+import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping } from './api'
 
 const ALLOWED_EMAILS = [
   'umangkedia5@gmail.com',
@@ -69,6 +69,66 @@ function LoginPage() {
   )
 }
 
+function ProductRow({ shop, product, onSaved }) {
+  const [factorySku, setFactorySku] = useState(product.factorySku || '')
+  const [fulfillmentCost, setFulfillmentCost] = useState(product.fulfillmentCost ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const dirty = factorySku !== (product.factorySku || '') || String(fulfillmentCost) !== String(product.fulfillmentCost ?? '')
+
+  async function handleSave() {
+    setSaving(true)
+    setError('')
+    try {
+      await updateProductMapping({
+        shop,
+        shopifyProductId: product.id,
+        factorySku,
+        fulfillmentCost: fulfillmentCost === '' ? null : Number(fulfillmentCost),
+      })
+      onSaved()
+    } catch (err) {
+      setError(err.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <tr style={{ borderTop: '1px solid #F3F4F6' }}>
+      <td style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {product.image && <img src={product.image} alt="" style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />}
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 600 }}>{product.name}</div>
+            <div style={{ fontSize: '10px', color: '#9CA3AF', fontFamily: 'monospace' }}>#{product.id}</div>
+          </div>
+        </div>
+      </td>
+      <td style={{ padding: '14px 16px', fontSize: '12px' }}>
+        {product.printFileUrl
+          ? <a href={product.printFileUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1E40AF' }}>View file ↗</a>
+          : <span style={{ color: '#9CA3AF' }}>Not set by merchant</span>}
+      </td>
+      <td style={{ padding: '10px 16px' }}>
+        <input value={factorySku} onChange={e => setFactorySku(e.target.value)} placeholder="e.g. GILDAN-64000-BLK"
+          style={{ width: '160px', padding: '7px 10px', border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }} />
+      </td>
+      <td style={{ padding: '10px 16px' }}>
+        <input type="number" value={fulfillmentCost} onChange={e => setFulfillmentCost(e.target.value)} placeholder="₹"
+          style={{ width: '90px', padding: '7px 10px', border: '1px solid #E5E7EB', borderRadius: '6px', fontSize: '12px', outline: 'none' }} />
+      </td>
+      <td style={{ padding: '10px 16px' }}>
+        <button onClick={handleSave} disabled={saving || !dirty}
+          style={{ background: dirty ? '#0A0A0A' : '#F3F4F6', color: dirty ? '#fff' : '#9CA3AF', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '12px', fontWeight: 600, cursor: dirty ? 'pointer' : 'not-allowed' }}>
+          {saving ? 'Saving...' : 'Save'}
+        </button>
+        {error && <div style={{ color: '#DC2626', fontSize: '11px', marginTop: '4px' }}>{error}</div>}
+      </td>
+    </tr>
+  )
+}
+
 function AdminDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('orders')
   const [orders, setOrders] = useState([])
@@ -77,10 +137,28 @@ function AdminDashboard({ user }) {
   const [updatingId, setUpdatingId] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch] = useState('')
+  const [productShop, setProductShop] = useState('')
+  const [products, setProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(false)
 
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (stores.length && !productShop) setProductShop(stores[0].shop_domain)
+  }, [stores])
+
+  useEffect(() => {
+    if (activeTab === 'products' && productShop) loadProducts()
+  }, [activeTab, productShop])
+
+  async function loadProducts() {
+    setProductsLoading(true)
+    const p = await fetchProductMappings(productShop)
+    setProducts(p)
+    setProductsLoading(false)
+  }
 
   async function loadData() {
     setLoading(true)
@@ -116,6 +194,7 @@ function AdminDashboard({ user }) {
   const NAV = [
     { id: 'orders', label: 'Orders' },
     { id: 'stores', label: 'Stores' },
+    { id: 'products', label: 'Products' },
   ]
 
   return (
@@ -250,6 +329,45 @@ function AdminDashboard({ user }) {
                       </td>
                       <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6B7280' }}>{s.installed_at ? new Date(s.installed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
                     </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* Products Tab */}
+        {activeTab === 'products' && (
+          <div style={{ background: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontWeight: 700, fontSize: '16px' }}>Products</span>
+              <select value={productShop} onChange={e => setProductShop(e.target.value)}
+                style={{ padding: '7px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }}>
+                {stores.map(s => <option key={s.shop_domain} value={s.shop_domain}>{s.shop_domain}</option>)}
+              </select>
+              <button onClick={loadProducts} style={{ background: '#F3F4F6', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }}>
+                Refresh
+              </button>
+              <span style={{ fontSize: '12px', color: '#9CA3AF', marginLeft: 'auto' }}>Factory SKU and fulfillment cost are set here, not by merchants.</span>
+            </div>
+            {productsLoading ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#9CA3AF' }}>Loading products...</div>
+            ) : !productShop ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#9CA3AF' }}>No stores connected yet</div>
+            ) : products.length === 0 ? (
+              <div style={{ padding: '60px', textAlign: 'center', color: '#9CA3AF' }}>No products found for this store</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F9FAFB' }}>
+                    {['Product', 'Print File', 'Factory SKU', 'Fulfillment Cost (₹)', ''].map(h => (
+                      <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map(p => (
+                    <ProductRow key={p.id} shop={productShop} product={p} onSaved={loadProducts} />
                   ))}
                 </tbody>
               </table>

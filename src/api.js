@@ -20,3 +20,25 @@ export async function updateOrderStatus(orderId, shop, status) {
   })
   return res.json()
 }
+
+export async function fetchProductMappings(shop) {
+  const res = await fetch(`${BASE_URL}/product-mappings?shop=${encodeURIComponent(shop)}`)
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
+}
+
+export async function updateProductMapping({ shop, shopifyProductId, factorySku, fulfillmentCost }) {
+  const res = await fetch(`${BASE_URL}/product-mappings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      shop,
+      shopify_product_id: shopifyProductId,
+      factory_sku: factorySku,
+      fulfillment_cost: fulfillmentCost,
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update product')
+  return data
+}
