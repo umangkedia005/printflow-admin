@@ -265,7 +265,7 @@ function AdminDashboard({ user }) {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F9FAFB' }}>
-                    {['Order', 'Store', 'Customer', 'Items', 'Amount', 'Status', 'Date', 'Action'].map(h => (
+                    {['Order', 'Store', 'Customer', 'To Print', 'Amount', 'Status', 'Date', 'Action'].map(h => (
                       <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
                     ))}
                   </tr>
@@ -278,7 +278,26 @@ function AdminDashboard({ user }) {
                         <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 600 }}>{o.order_name || `#${o.order_id}`}</td>
                         <td style={{ padding: '14px 16px', fontSize: '12px', color: '#6B7280' }}>{(o.shop_domain || '').replace('.myshopify.com', '')}</td>
                         <td style={{ padding: '14px 16px', fontSize: '13px' }}>{o.email || '—'}</td>
-                        <td style={{ padding: '14px 16px', fontSize: '13px', color: '#6B7280' }}>{(o.items || []).length} item{(o.items || []).length !== 1 ? 's' : ''}</td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', maxWidth: '160px' }}>
+                            {(o.items || []).map((item, idx) => {
+                              const printReady = !!item.print_file_url
+                              const thumb = item.print_file_url || item.image_url
+                              const title = `${item.name || 'Item'} — ${printReady ? 'print file ready' : thumb ? 'no print file (showing Shopify photo)' : 'no print file, no photo'}`
+                              return thumb ? (
+                                <a key={idx} href={thumb} target="_blank" rel="noopener noreferrer" title={title}
+                                  style={{ display: 'block', width: '26px', height: '26px', borderRadius: '5px', overflow: 'hidden', border: `2px solid ${printReady ? '#22C55E' : '#F97316'}`, flexShrink: 0 }}>
+                                  <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </a>
+                              ) : (
+                                <div key={idx} title={title}
+                                  style={{ width: '26px', height: '26px', borderRadius: '5px', background: '#FEF2F2', border: '2px solid #FCA5A5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', flexShrink: 0 }}>
+                                  ⚠
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </td>
                         <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 600 }}>{o.currency || 'INR'} {parseFloat(o.total_price || 0).toFixed(2)}</td>
                         <td style={{ padding: '14px 16px' }}><Badge status={o.status} /></td>
                         <td style={{ padding: '14px 16px', fontSize: '12px', color: '#9CA3AF' }}>{o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</td>
