@@ -118,16 +118,41 @@ function Section({ title, hint, children, action }) {
 }
 
 // The product photo with every print area drawn on it; the selected area can
-// be dragged. Positions are fractions of the (square) photo.
+// be dragged. Positions are fractions of the (square) photo. Clicking the
+// photo zooms in on that spot (click again to zoom out) and dragging it pans,
+// so small areas like sleeves can be placed precisely.
+const MIN_VIEW = 0.12
+const clampView = v => {
+  const w = Math.min(1, Math.max(MIN_VIEW, v.w))
+  return { w, x: Math.min(Math.max(v.x, 0), 1 - w), y: Math.min(Math.max(v.y, 0), 1 - w) }
+}
+
 function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
   const ref = useRef(null)
   const drag = useRef(null)
+  const pan = useRef(null)
+  const [view, setView] = useState({ x: 0, y: 0, w: 1 })
+  const [panning, setPanning] = useState(false)
+  const zoomed = view.w < 0.999
+
+  // Screen position as a fraction of the visible frame -> fraction of the photo.
+  const toPhoto = (clientX, clientY, rect) => ({
+    x: view.x + ((clientX - rect.left) / rect.width) * view.w,
+    y: view.y + ((clientY - rect.top) / rect.width) * view.w,
+  })
+  function zoomBy(factor, center) {
+    const c = center || { x: view.x + view.w / 2, y: view.y + view.w / 2 }
+    const w = Math.min(1, view.w / factor)
+    setView(clampView({ w, x: c.x - w / 2, y: c.y - w / 2 }))
+  }
 
   function down(e, i) {
     if (i !== selected) return
     e.preventDefault()
+    e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = { x: e.clientX, y: e.clientY, from: areas[i].mockup_box, size: ref.current.getBoundingClientRect().width }
+    // Pixels on screen are smaller fractions of the photo when zoomed in.
+    drag.current = { x: e.clientX, y: e.clientY, from: areas[i].mockup_box, perPx: view.w / ref.current.getBoundingClientRect().width }
   }
   function move(e) {
     const d = drag.current
@@ -136,34 +161,72 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
     const h = d.from.w * a.height_in / a.width_in
     const clamp = (v, max) => Math.min(Math.max(v, 0), max)
     onMove({
-      x: Math.round(clamp(d.from.x + (e.clientX - d.x) / d.size, 1 - d.from.w) * 1000) / 1000,
-      y: Math.round(clamp(d.from.y + (e.clientY - d.y) / d.size, 1 - h) * 1000) / 1000,
+      x: Math.round(clamp(d.from.x + (e.clientX - d.x) * d.perPx, 1 - d.from.w) * 1000) / 1000,
+      y: Math.round(clamp(d.from.y + (e.clientY - d.y) * d.perPx, 1 - h) * 1000) / 1000,
     })
   }
 
+  function photoDown(e) {
+    if (e.button !== 0) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    pan.current = { x: e.clientX, y: e.clientY, from: view, rect: e.currentTarget.getBoundingClientRect(), moved: false }
+  }
+  function photoMove(e) {
+    const p = pan.current
+    if (!p) return
+    const dx = e.clientX - p.x, dy = e.clientY - p.y
+    if (!p.moved && Math.abs(dx) + Math.abs(dy) < 5) return
+    if (!p.moved) { p.moved = true; setPanning(true) }
+    const perPx = p.from.w / p.rect.width
+    setView(clampView({ w: p.from.w, x: p.from.x - dx * perPx, y: p.from.y - dy * perPx }))
+  }
+  function photoUp(e) {
+    const p = pan.current
+    pan.current = null
+    setPanning(false)
+    if (!p || p.moved) return
+    if (zoomed) return setView({ x: 0, y: 0, w: 1 })
+    zoomBy(2.5, toPhoto(e.clientX, e.clientY, p.rect))
+  }
+
+  const pct = n => `${n * 100}%`
+  const place = (x, y, w, h) => ({ left: pct((x - view.x) / view.w), top: pct((y - view.y) / view.w), width: pct(w / view.w), height: pct(h / view.w) })
+  const ease = panning ? 'none' : 'all 0.28s ease'
+
   return (
-    <div ref={ref} style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: photoUrl ? C.card : C.wash, border: '1px solid #E9E3D6', borderRadius: '10px', overflow: 'hidden' }}>
-      {photoUrl
-        ? <img src={photoUrl} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none' }} />
-        : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: '12px', textAlign: 'center', padding: '20px' }}>No photo for this color and view yet.</div>}
-      {areas.map((a, i) => {
-        if ((a.view_id || viewId) !== viewId) return null
-        const b = a.mockup_box
-        const h = b.w * a.height_in / a.width_in
-        const on = i === selected
-        return (
-          <div key={i}>
-            {on && a.zoom && (
-              <div style={{ position: 'absolute', left: `${a.zoom.x * 100}%`, top: `${a.zoom.y * 100}%`, width: `${a.zoom.w * 100}%`, height: `${a.zoom.w * 100}%`, border: '1.5px dashed #F59E0B', pointerEvents: 'none' }} />
-            )}
-            <div
-              onPointerDown={e => down(e, i)} onPointerMove={move} onPointerUp={() => { drag.current = null }}
-              style={{ position: 'absolute', left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${h * 100}%`, border: `2px ${on ? 'solid' : 'dashed'} ${on ? '#2563EB' : 'rgba(37,99,235,0.45)'}`, background: on ? 'rgba(37,99,235,0.12)' : 'transparent', cursor: on ? 'move' : 'default', touchAction: 'none', fontSize: '10px', fontWeight: 700, color: '#1D4ED8', padding: '2px 4px', boxSizing: 'border-box', overflow: 'hidden' }}>
-              {a.label}
+    <div style={{ position: 'relative' }}>
+      <div ref={ref}
+        onPointerDown={photoDown} onPointerMove={photoMove} onPointerUp={photoUp}
+        onPointerCancel={() => { pan.current = null; setPanning(false) }}
+        style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: photoUrl ? C.card : C.wash, border: '1px solid #E9E3D6', borderRadius: '10px', overflow: 'hidden', cursor: panning ? 'grabbing' : zoomed ? 'zoom-out' : 'zoom-in', touchAction: 'none', userSelect: 'none' }}>
+        {photoUrl
+          ? <img src={photoUrl} alt="" draggable={false} style={{ position: 'absolute', maxWidth: 'none', ...place(0, 0, 1, 1), objectFit: 'cover', userSelect: 'none', transition: ease }} />
+          : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: '12px', textAlign: 'center', padding: '20px' }}>No photo for this color and view yet.</div>}
+        {areas.map((a, i) => {
+          if ((a.view_id || viewId) !== viewId) return null
+          const b = a.mockup_box
+          const h = b.w * a.height_in / a.width_in
+          const on = i === selected
+          return (
+            <div key={i}>
+              {on && a.zoom && (
+                <div style={{ position: 'absolute', ...place(a.zoom.x, a.zoom.y, a.zoom.w, a.zoom.w), border: '1.5px dashed #F59E0B', pointerEvents: 'none', transition: ease }} />
+              )}
+              <div
+                onPointerDown={e => down(e, i)} onPointerMove={move} onPointerUp={e => { e.stopPropagation(); drag.current = null }}
+                style={{ position: 'absolute', ...place(b.x, b.y, b.w, h), border: `2px ${on ? 'solid' : 'dashed'} ${on ? '#2563EB' : 'rgba(37,99,235,0.45)'}`, background: on ? 'rgba(37,99,235,0.12)' : 'transparent', cursor: on ? 'move' : 'inherit', touchAction: 'none', fontSize: '10px', fontWeight: 700, color: '#1D4ED8', padding: '2px 4px', boxSizing: 'border-box', overflow: 'hidden', transition: drag.current ? 'none' : ease, pointerEvents: on ? 'auto' : 'none' }}>
+                {a.label}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+      <div style={{ position: 'absolute', right: '10px', bottom: '10px', display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.94)', border: `1px solid ${C.rule}`, borderRadius: '99px', padding: '3px' }}>
+        {[['−', 'Zoom out', () => zoomBy(1 / 1.6)], ['+', 'Zoom in', () => zoomBy(1.6)], ['⤢', 'Fit', () => setView({ x: 0, y: 0, w: 1 })]].map(([sym, title, fn]) => (
+          <button key={title} title={title} aria-label={title} onClick={fn} style={{ width: '28px', height: '28px', border: 'none', background: 'transparent', borderRadius: '99px', fontSize: '15px', color: C.ink, cursor: 'pointer' }}>{sym}</button>
+        ))}
+      </div>
+      <div style={{ fontSize: '11px', color: C.muted, marginTop: '6px' }}>Click the photo to zoom in on a spot; drag to look around.</div>
     </div>
   )
 }
@@ -404,7 +467,7 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
       <Section title="Print areas" hint="Drag the blue box on the photo. The orange box is the part the merchant's editor zooms into."
         action={<button style={button} onClick={() => { update({ print_areas: [...form.print_areas, { id: `area-${form.print_areas.length + 1}`, label: 'New area', view_id: areaView, width_in: 10, height_in: 10, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.4, y: 0.3, w: 0.2 } }] }); setSelectedArea(form.print_areas.length) }}>+ Add area</button>}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 420px) 1fr', gap: '20px', alignItems: 'start' }} className="admin-areas">
-          <PrintAreaCanvas photoUrl={form.colors[previewColor]?.image_urls?.[areaView]} areas={form.print_areas} selected={selectedArea} viewId={areaView}
+          <PrintAreaCanvas key={areaView} photoUrl={form.colors[previewColor]?.image_urls?.[areaView]} areas={form.print_areas} selected={selectedArea} viewId={areaView}
             onMove={pos => setArea(selectedArea, { mockup_box: { ...area.mockup_box, ...pos } })} />
           <div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
