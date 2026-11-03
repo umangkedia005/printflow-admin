@@ -196,6 +196,7 @@ function AdminDashboard({ user }) {
   const [stores, setStores] = useState([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState(null)
+  const [statusError, setStatusError] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [productShop, setProductShop] = useState('')
@@ -229,11 +230,18 @@ function AdminDashboard({ user }) {
     setLoading(false)
   }
 
+  // Only show the new status once the server has saved it.
   async function handleStatusChange(order, nextStatus) {
     setUpdatingId(order.order_id)
-    await updateOrderStatus(order.order_id, order.shop_domain, nextStatus)
-    setOrders(prev => prev.map(o => o.order_id === order.order_id ? { ...o, status: nextStatus } : o))
-    setUpdatingId(null)
+    setStatusError('')
+    try {
+      await updateOrderStatus(order.order_id, order.shop_domain, nextStatus)
+      setOrders(prev => prev.map(o => o.order_id === order.order_id ? { ...o, status: nextStatus } : o))
+    } catch (err) {
+      setStatusError(`${order.order_name || order.order_id}: ${err.message}`)
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   const q = search.trim().toLowerCase()
@@ -324,6 +332,7 @@ function AdminDashboard({ user }) {
               <button onClick={loadData} style={{ ...button, padding: '7px 14px', fontSize: '12px' }}>Refresh</button>
             </div>
 
+            {statusError && <div style={{ color: C.red, fontSize: '13px', marginBottom: '12px', background: C.redWash, padding: '10px 14px', borderRadius: '10px' }}>{statusError}</div>}
             <div style={{ ...panel, overflow: 'hidden' }}>
               {loading ? (
                 <div style={empty}>Loading orders…</div>

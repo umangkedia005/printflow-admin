@@ -30,7 +30,9 @@ export async function updateOrderStatus(orderId, shop, status) {
     headers: await adminHeaders(true),
     body: JSON.stringify({ order_id: orderId, shop_domain: shop, status }),
   })
-  return res.json()
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not update the order')
+  return data
 }
 
 export async function fetchProductMappings(shop) {
