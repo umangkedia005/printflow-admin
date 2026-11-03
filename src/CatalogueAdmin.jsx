@@ -48,6 +48,26 @@ function withStandardViews(form) {
   }
 }
 
+// What gets saved: unnamed columns and columns with no values at all are
+// dropped (with their values), so a half-set-up chart still saves.
+function cleanChart(chart, sizes) {
+  if (!chart) return chart
+  const hasValue = i => sizes.some(size => String(chart.rows?.[size]?.[i] ?? '').trim() !== '')
+  const keep = chart.columns.map((col, i) => (String(col).trim() && hasValue(i) ? i : -1)).filter(i => i >= 0)
+  return {
+    ...chart,
+    columns: keep.map(i => chart.columns[i].trim()),
+    rows: Object.fromEntries(sizes.map(size => [size, keep.map(i => chart.rows?.[size]?.[i] ?? '')])),
+  }
+}
+
+// Usual flat measurements per garment type, as starting points.
+const CHART_PRESETS = {
+  'T-shirt': ['Chest', 'Length', 'Shoulder', 'Sleeve'],
+  'Polo': ['Chest', 'Length', 'Shoulder'],
+  'Hoodie': ['Chest', 'Length', 'Sleeve'],
+}
+
 const variantKey = (color, size) => `${color}|${size}`
 const colorCode = name => name.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || 'CLR'
 const pct = n => Math.round(Number(n) * 1000) / 10
@@ -291,6 +311,12 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
   // Catch the common gaps here, with a fix in the message, before the
   // server's stricter checks run.
   function problemBeforeSave() {
+    const chartNow = cleanChart(form.size_chart, form.sizes)
+    const halfRow = chartNow && form.sizes.find(size => {
+      const filled = (chartNow.rows[size] || []).filter(v => String(v).trim() !== '').length
+      return filled > 0 && filled < chartNow.columns.length
+    })
+    if (halfRow) return `Size chart: fill every measurement for ${halfRow}, or clear that row.`
     if (!form.blank_id) return 'Set a product ID.'
     if (isNew && existingIds.includes(form.blank_id)) {
       return `A product with ID "${form.blank_id}" already exists, and saving would replace it. Choose another ID, or go back and edit that product.`
@@ -313,7 +339,7 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
     setSaving(true)
     setError('')
     try {
-      const saved = await saveBlank(form)
+      const saved = await saveBlank({ ...form, size_chart: cleanChart(form.size_chart, form.sizes) })
       onSaved(saved)
     } catch (err) {
       setError(err.message)
@@ -325,6 +351,24 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
 
   const area = form.print_areas[selectedArea]
   const chart = form.size_chart || { unit: 'in', columns: [], rows: {} }
+  const setChart = next => update({ size_chart: next })
+  // Columns and each size's values are parallel lists, so adding, removing
+  // or swapping columns always moves the values with them.
+  const addChartColumn = (name = '') => setChart({ ...chart, columns: [...chart.columns, name] })
+  function removeChartColumn(ci) {
+    setChart({
+      ...chart,
+      columns: chart.columns.filter((_, j) => j !== ci),
+      rows: Object.fromEntries(Object.entries(chart.rows || {}).map(([size, row]) => [size, row.filter((_, j) => j !== ci)])),
+    })
+  }
+  // Keeps values already typed for measurements the preset also has.
+  function applyChartPreset(name) {
+    const columns = CHART_PRESETS[name]
+    const rows = Object.fromEntries(Object.entries(chart.rows || {}).map(([size, row]) =>
+      [size, columns.map(col => row[chart.columns.indexOf(col)] ?? '')]))
+    setChart({ ...chart, columns, rows })
+  }
   const views = form.views?.length ? form.views : [{ id: 'main', label: 'Main' }]
   const areaView = area?.view_id || views[0].id
   const missingPhotos = form.colors.flatMap(c => views.filter(v => !c.images?.[v.id]).map(v => `${c.name} ${v.label}`))
@@ -536,29 +580,66 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
         </div>
       </Section>
 
-      <Section title="Size chart" hint="Garment measurements merchants see next to the product.">
-        <div style={{ maxWidth: '320px', marginBottom: '12px' }}><span style={label}>Columns (comma separated)</span>
-          <input style={input} value={chart.columns.join(', ')} onChange={e => update({ size_chart: { ...chart, columns: e.target.value.split(',').map(s => s.trim()) } })} />
-        </div>
-        <table style={{ borderCollapse: 'collapse', fontSize: '13px' }}>
-          <thead><tr>{['Size', ...chart.columns].map((h, i) => <th key={i} style={{ padding: '6px 10px', textAlign: 'left', fontSize: '11px', color: C.muted, textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
-          <tbody>
-            {form.sizes.map(s => (
-              <tr key={s}>
-                <td style={{ padding: '4px 10px', fontWeight: 700 }}>{s}</td>
-                {chart.columns.map((_, ci) => (
-                  <td key={ci} style={{ padding: '4px 6px', width: '90px' }}>
-                    <input style={input} type="number" step="0.5" value={chart.rows?.[s]?.[ci] ?? ''} onChange={e => {
-                      const row = [...(chart.rows?.[s] || chart.columns.map(() => ''))]
-                      row[ci] = e.target.value
-                      update({ size_chart: { ...chart, rows: { ...chart.rows, [s]: row } } })
-                    }} />
-                  </td>
-                ))}
-              </tr>
+      <Section title="Size chart" hint="This product's garment measurements, shown to merchants from the Size chart button on its card."
+        action={
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12px', color: C.muted }}>Start from</span>
+            {Object.keys(CHART_PRESETS).map(name => (
+              <button key={name} style={{ ...button, padding: '6px 12px', fontSize: '12px' }} onClick={() => applyChartPreset(name)}>{name}</button>
             ))}
-          </tbody>
-        </table>
+          </div>
+        }>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '14px' }}>
+          <span style={{ ...label, marginBottom: 0, marginRight: '4px' }}>Unit</span>
+          {[['in', 'Inches'], ['cm', 'cm']].map(([u, text]) => (
+            <button key={u} style={{ ...(chart.unit === u ? primary : button), padding: '5px 12px', fontSize: '12px' }} onClick={() => setChart({ ...chart, unit: u })}>{text}</button>
+          ))}
+        </div>
+        {chart.columns.length === 0 ? (
+          <div style={{ border: `1px dashed ${C.rule}`, borderRadius: '10px', padding: '22px', textAlign: 'center', color: C.muted, fontSize: '13px' }}>
+            No measurements yet. Pick a starting point above, or{' '}
+            <button style={{ ...button, padding: '4px 12px', fontSize: '12px' }} onClick={() => addChartColumn()}>add a measurement</button>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: '11px', color: C.muted, verticalAlign: 'bottom' }}>Size</th>
+                  {chart.columns.map((col, ci) => (
+                    <th key={ci} style={{ padding: '4px 6px', width: '120px' }}>
+                      <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                        <input style={{ ...input, fontWeight: 600, fontSize: '12px', padding: '7px 8px' }} value={col} placeholder="Measurement" onChange={e => setChart({ ...chart, columns: chart.columns.map((c, j) => (j === ci ? e.target.value : c)) })} />
+                        <button title={`Remove ${col || 'this column'}`} aria-label={`Remove ${col || 'this column'}`} onClick={() => removeChartColumn(ci)} style={{ border: 'none', background: 'none', color: C.red, cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}>✕</button>
+                      </div>
+                    </th>
+                  ))}
+                  <th style={{ padding: '4px 6px', verticalAlign: 'middle' }}>
+                    <button style={{ ...button, padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={() => addChartColumn()}>+ Add measurement</button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {form.sizes.map(s => (
+                  <tr key={s}>
+                    <td style={{ padding: '4px 10px', fontWeight: 700 }}>{s}</td>
+                    {chart.columns.map((_, ci) => (
+                      <td key={ci} style={{ padding: '4px 6px' }}>
+                        <input style={input} type="number" step="0.5" placeholder={chart.unit === 'cm' ? 'cm' : 'in'} value={chart.rows?.[s]?.[ci] ?? ''} onChange={e => {
+                          const row = chart.columns.map((__, k) => chart.rows?.[s]?.[k] ?? '')
+                          row[ci] = e.target.value
+                          setChart({ ...chart, rows: { ...chart.rows, [s]: row } })
+                        }} />
+                      </td>
+                    ))}
+                    <td />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p style={{ fontSize: '12px', color: C.muted, marginTop: '10px' }}>Measure the garment laid flat; chest is armpit to armpit × 2. Rows left empty aren't shown to merchants.</p>
       </Section>
     </div>
   )
