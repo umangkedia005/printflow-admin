@@ -263,6 +263,17 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
   const setSlot = (key, value) => setSlots(st => ({ ...st, [key]: value }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  // New products get their internal ID from the name until the ID is typed
+  // into directly; merchants never see it.
+  const [idTouched, setIdTouched] = useState(!isNew)
+  function setName(name) {
+    if (idTouched) return update({ name })
+    const base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 36) || ''
+    let id = base, n = 2
+    while (id && existingIds.includes(id)) id = `${base}-${n++}`
+    update({ name, blank_id: id })
+  }
+
   // After a save attempt, empty SKU and cost boxes are outlined in red.
   const [triedSave, setTriedSave] = useState(false)
   const missing = value => (triedSave && !String(value ?? '').trim() ? { borderColor: C.red, background: C.redWash } : {})
@@ -428,8 +439,8 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
 
       <Section title="Basics">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-          <div><span style={label}>Product ID</span><input style={{ ...input, background: isNew ? C.card : C.paper }} value={form.blank_id} disabled={!isNew} placeholder="e.g. classic-polo" onChange={e => update({ blank_id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} /></div>
-          <div><span style={label}>Name</span><input style={input} value={form.name} onChange={e => update({ name: e.target.value })} /></div>
+          <div><span style={label}>Name</span><input style={input} value={form.name} placeholder="Classic piqué polo" onChange={e => setName(e.target.value)} /></div>
+          <div><span style={label}>Product ID (internal, from the name)</span><input style={{ ...input, background: isNew ? C.card : C.paper, fontFamily: 'monospace', fontSize: '12px' }} value={form.blank_id} disabled={!isNew} placeholder="classic-pique-polo" onChange={e => { setIdTouched(true); update({ blank_id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') }) }} /></div>
           <div><span style={label}>Category</span><input style={input} value={form.category} onChange={e => update({ category: e.target.value })} /></div>
           <div><span style={label}>Fabric</span><input style={input} value={form.fabric} onChange={e => update({ fabric: e.target.value })} /></div>
           <div><span style={label}>GSM</span><input style={input} type="number" value={form.gsm} onChange={e => update({ gsm: e.target.value })} /></div>
