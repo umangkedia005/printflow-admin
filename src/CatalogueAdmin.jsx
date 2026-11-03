@@ -61,14 +61,45 @@ function syncVariants(form) {
   return { ...form, variants }
 }
 
-function readImageSize(file) {
+const MAX_PHOTO_PX = 2048
+
+function loadImage(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
     const img = new Image()
-    img.onload = () => resolve({ url, w: img.naturalWidth, h: img.naturalHeight })
-    img.onerror = () => reject(new Error('Could not read this image'))
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file isn't an image this browser can read.")) }
     img.src = url
   })
+}
+
+// Print boxes are placed on square photos, and S3 takes at most 10 MB, so
+// every photo is made square here: never cropped, but padded with its own
+// background color (white if transparent), scaled to at most 2048px and
+// saved as a high-quality JPEG.
+async function squarePhoto(file) {
+  const img = await loadImage(file)
+  const w = img.naturalWidth, h = img.naturalHeight
+  const size = Math.min(Math.max(w, h), MAX_PHOTO_PX)
+  const scale = size / Math.max(w, h)
+
+  const probe = document.createElement('canvas')
+  probe.width = probe.height = 1
+  const pctx = probe.getContext('2d')
+  pctx.drawImage(img, 0, 0, 1, 1, 0, 0, 1, 1)
+  const [r, g, b, a] = pctx.getImageData(0, 0, 1, 1).data
+
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = a < 250 ? '#FFFFFF' : `rgb(${r}, ${g}, ${b})`
+  ctx.fillRect(0, 0, size, size)
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, (size - w * scale) / 2, (size - h * scale) / 2, w * scale, h * scale)
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+  if (!blob) throw new Error('Could not prepare this photo.')
+  return { blob, url: URL.createObjectURL(blob), padded: Math.abs(w - h) > 1, original: `${w}×${h}` }
 }
 
 function Section({ title, hint, children, action }) {
@@ -144,7 +175,9 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
   const [previewColor, setPreviewColor] = useState(0)
   const [costBySize, setCostBySize] = useState({})
   const [skuPrefix, setSkuPrefix] = useState(() => (initial.variants[0]?.sku.split('-').slice(0, 2).join('-')) || 'NLS-XX')
-  const [uploading, setUploading] = useState(null)
+  // Upload state per color+view slot: { [`${i}|${viewId}`]: { busy, error, note } }
+  const [slots, setSlots] = useState({})
+  const setSlot = (key, value) => setSlots(st => ({ ...st, [key]: value }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -168,18 +201,16 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    setError('')
-    if (!form.blank_id) return setError('Set the product ID before uploading photos.')
+    const slot = `${i}|${viewId}`
+    if (!form.blank_id) return setSlot(slot, { error: 'Set the product ID at the top first.' })
+    setSlot(slot, { busy: true })
     try {
-      const { url, w, h } = await readImageSize(file)
-      if (Math.abs(w - h) / Math.max(w, h) > 0.02) return setError(`Photos must be square (this one is ${w}×${h}).`)
-      setUploading(`${i}|${viewId}`)
-      const key = await uploadBlankPhoto(form.blank_id, file)
-      setForm(f => ({ ...f, colors: f.colors.map((c, j) => (j === i ? { ...c, images: { ...c.images, [viewId]: key }, image_urls: { ...c.image_urls, [viewId]: url } } : c)) }))
+      const photo = await squarePhoto(file)
+      const key = await uploadBlankPhoto(form.blank_id, photo.blob)
+      setForm(f => ({ ...f, colors: f.colors.map((c, j) => (j === i ? { ...c, images: { ...c.images, [viewId]: key }, image_urls: { ...c.image_urls, [viewId]: photo.url } } : c)) }))
+      setSlot(slot, photo.padded ? { note: `Was ${photo.original}; padded to square` } : {})
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setUploading(null)
+      setSlot(slot, { error: err.message })
     }
   }
 
@@ -319,13 +350,16 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px' }}>
                 {views.map(v => {
                   const url = c.image_urls?.[v.id]
-                  const busy = uploading === `${i}|${v.id}`
+                  const st = slots[`${i}|${v.id}`] || {}
+                  const busy = st.busy
                   return (
                     <label key={v.id} style={{ cursor: 'pointer' }}>
                       <div style={{ aspectRatio: '1 / 1', background: url ? C.card : C.paper, border: `1px ${url ? 'solid' : 'dashed'} #E9E3D6`, borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: C.muted, textAlign: 'center' }}>
                         {url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : busy ? 'Uploading…' : '+ Upload'}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: C.muted, marginTop: '4px', textAlign: 'center' }}>{v.label}{url ? ' · replace' : ''}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: C.muted, marginTop: '4px', textAlign: 'center' }}>{v.label}{url && !busy ? ' · replace' : ''}</div>
+                      {st.error && <div style={{ fontSize: '11px', color: C.red, marginTop: '2px', textAlign: 'center', lineHeight: 1.3 }}>{st.error}</div>}
+                      {st.note && !st.error && <div style={{ fontSize: '11px', color: C.gold, marginTop: '2px', textAlign: 'center', lineHeight: 1.3 }}>{st.note}</div>}
                       <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => handlePhoto(i, v.id, e)} />
                     </label>
                   )

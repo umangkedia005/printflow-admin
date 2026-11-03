@@ -73,19 +73,33 @@ export async function saveBlank(blank) {
   return data
 }
 
-// Presigned POST straight to S3, like the merchant artwork uploads.
-export async function uploadBlankPhoto(blankId, file) {
+// Presigned POST straight to S3, like the merchant artwork uploads. Gives up
+// after a minute instead of leaving the page waiting forever.
+export async function uploadBlankPhoto(blankId, photo) {
   const res = await fetch(`${BASE_URL}/admin/uploads/blank-image`, {
     method: 'POST',
     headers: await adminHeaders(true),
-    body: JSON.stringify({ blank_id: blankId, content_type: file.type }),
+    body: JSON.stringify({ blank_id: blankId, content_type: photo.type }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Could not start the upload')
+
   const form = new FormData()
   Object.entries(data.fields).forEach(([k, v]) => form.append(k, v))
-  form.append('file', file)
-  const upload = await fetch(data.url, { method: 'POST', body: form })
-  if (!upload.ok) throw new Error('Upload failed. Photos must be PNG, JPG or WebP and under 10 MB.')
+  form.append('file', photo, 'photo.jpg')
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 60000)
+  let upload
+  try {
+    upload = await fetch(data.url, { method: 'POST', body: form, signal: controller.signal })
+  } catch (err) {
+    throw new Error(err.name === 'AbortError' ? 'Upload timed out. Check your connection and try again.' : 'Could not reach storage. Try again.')
+  } finally {
+    clearTimeout(timer)
+  }
+  if (!upload.ok) {
+    const detail = (await upload.text()).match(/<Message>(.*?)<\/Message>/)?.[1]
+    throw new Error(`Upload failed${detail ? `: ${detail}` : ''}.`)
+  }
   return data.key
 }
