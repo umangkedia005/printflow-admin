@@ -231,7 +231,7 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
   )
 }
 
-function BlankEditor({ initial, isNew, onSaved, onCancel }) {
+function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
   const [form, setForm] = useState(() => syncVariants(JSON.parse(JSON.stringify(initial))))
   const [sizesText, setSizesText] = useState(initial.sizes.join(', '))
   const [selectedArea, setSelectedArea] = useState(0)
@@ -243,6 +243,9 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
   const setSlot = (key, value) => setSlots(st => ({ ...st, [key]: value }))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  // After a save attempt, empty SKU and cost boxes are outlined in red.
+  const [triedSave, setTriedSave] = useState(false)
+  const missing = value => (triedSave && !String(value ?? '').trim() ? { borderColor: C.red, background: C.redWash } : {})
 
   const update = patch => setForm(f => syncVariants({ ...f, ...patch }))
   const setColor = (i, patch) => setForm(f => {
@@ -285,7 +288,28 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
     setForm(f => ({ ...f, variants: f.variants.map(v => ({ ...v, sku: `${prefix}-${colorCode(v.color)}-${v.size}`.replace(/[^A-Z0-9_-]/gi, '') })) }))
   }
 
+  // Catch the common gaps here, with a fix in the message, before the
+  // server's stricter checks run.
+  function problemBeforeSave() {
+    if (!form.blank_id) return 'Set a product ID.'
+    if (isNew && existingIds.includes(form.blank_id)) {
+      return `A product with ID "${form.blank_id}" already exists, and saving would replace it. Choose another ID, or go back and edit that product.`
+    }
+    const noSku = form.variants.filter(v => !String(v.sku || '').trim())
+    if (noSku.length) return `${noSku.length} of ${form.variants.length} variants have no factory SKU. Set a SKU prefix and click Fill SKUs, or type them in the table.`
+    const noCost = form.variants.filter(v => !(Number(v.base_cost) > 0))
+    if (noCost.length) return `${noCost.length} of ${form.variants.length} variants have no base cost. Enter a cost under each size and click Apply to all colors.`
+    return null
+  }
+
   async function handleSave() {
+    setTriedSave(true)
+    const problem = problemBeforeSave()
+    if (problem) {
+      setError(problem)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -293,6 +317,7 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
       onSaved(saved)
     } catch (err) {
       setError(err.message)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setSaving(false)
     }
@@ -454,8 +479,8 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
                 <tr key={variantKey(v.color, v.size)} style={{ borderTop: '1px solid #F1ECE1' }}>
                   <td style={{ padding: '6px 10px' }}>{v.color}</td>
                   <td style={{ padding: '6px 10px', fontWeight: 700 }}>{v.size}</td>
-                  <td style={{ padding: '6px 10px' }}><input style={{ ...input, fontFamily: 'monospace' }} value={v.sku} onChange={e => setVariant(v.color, v.size, { sku: e.target.value })} /></td>
-                  <td style={{ padding: '6px 10px', width: '120px' }}><input style={input} type="number" value={v.base_cost} onChange={e => setVariant(v.color, v.size, { base_cost: e.target.value })} /></td>
+                  <td style={{ padding: '6px 10px' }}><input style={{ ...input, fontFamily: 'monospace', ...missing(v.sku) }} value={v.sku} placeholder={`${skuPrefix}-${colorCode(v.color)}-${v.size}`} onChange={e => setVariant(v.color, v.size, { sku: e.target.value })} /></td>
+                  <td style={{ padding: '6px 10px', width: '120px' }}><input style={{ ...input, ...missing(Number(v.base_cost) > 0 ? v.base_cost : '') }} type="number" value={v.base_cost} placeholder="₹" onChange={e => setVariant(v.color, v.size, { base_cost: e.target.value })} /></td>
                   <td style={{ padding: '6px 10px' }}><input type="checkbox" checked={v.in_stock} onChange={e => setVariant(v.color, v.size, { in_stock: e.target.checked })} /></td>
                 </tr>
               ))}
@@ -555,6 +580,7 @@ export default function CatalogueAdmin() {
       <BlankEditor
         initial={editing.blank}
         isNew={editing.isNew}
+        existingIds={blanks.map(b => b.blank_id)}
         onCancel={() => setEditing(null)}
         onSaved={saved => {
           setBlanks(list => [...list.filter(b => b.blank_id !== saved.blank_id), saved].sort((a, b) => a.sort_order - b.sort_order))
