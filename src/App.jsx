@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import CatalogueAdmin from './CatalogueAdmin'
+import SettingsAdmin from './SettingsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
 
@@ -267,6 +268,7 @@ function AdminDashboard({ user }) {
     { id: 'stores', label: 'Stores' },
     { id: 'products', label: 'Products' },
     { id: 'catalogue', label: 'Catalogue' },
+    { id: 'settings', label: 'Settings' },
   ]
 
   return (
@@ -343,7 +345,10 @@ function AdminDashboard({ user }) {
                             <td style={{ ...td, width: '60px' }}><OrderThumb items={o.items} /></td>
                             <td style={td}>
                               <div style={{ fontFamily: SERIF, fontSize: '17px' }}>{(o.order_name || `#${o.order_id}`).replace('#', '')}</div>
-                              <div style={{ fontSize: '11px', color: C.faint }}>No. {o.order_id}</div>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
+                                <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: o.source === 'manual' ? C.gold : C.muted, background: o.source === 'manual' ? C.goldWash : C.wash, padding: '1px 7px', borderRadius: '99px' }}>{o.source === 'manual' ? 'Manual' : 'Shopify'}</span>
+                                {o.reference && <span style={{ fontSize: '11px', color: C.faint }}>Ref {o.reference}</span>}
+                              </div>
                             </td>
                             <td style={td}>
                               <div style={{ fontWeight: 500 }}>{customerName(o)}</div>
@@ -438,6 +443,7 @@ function AdminDashboard({ user }) {
         )}
 
         {activeTab === 'catalogue' && <CatalogueAdmin />}
+        {activeTab === 'settings' && <SettingsAdmin />}
       </main>
     </div>
   )

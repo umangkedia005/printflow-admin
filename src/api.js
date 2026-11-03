@@ -103,3 +103,21 @@ export async function uploadBlankPhoto(blankId, photo) {
   }
   return data.key
 }
+
+export async function fetchSettings() {
+  const res = await fetch(`${BASE_URL}/admin/settings`, { headers: await adminHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to load settings')
+  return data
+}
+
+export async function saveSettings(values) {
+  const res = await fetch(`${BASE_URL}/admin/settings`, {
+    method: 'POST',
+    headers: await adminHeaders(true),
+    body: JSON.stringify(values),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to save settings')
+  return data
+}
