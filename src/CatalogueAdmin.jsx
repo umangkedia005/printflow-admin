@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchBlanks, saveBlank, uploadBlankPhoto } from './api'
-
-const card = { background: '#fff', borderRadius: '12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }
-const input = { padding: '8px 10px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', width: '100%', fontFamily: 'inherit' }
-const label = { display: 'block', fontSize: '12px', fontWeight: 600, color: '#6B7280', marginBottom: '4px' }
-const button = { background: '#F3F4F6', border: 'none', borderRadius: '8px', padding: '8px 14px', fontSize: '13px', cursor: 'pointer', fontWeight: 600 }
-const primary = { ...button, background: '#0A0A0A', color: '#fff' }
+import { C, SERIF, panel as card, input, label, button, primary, th, td, empty } from './theme'
+import Heading from './Heading'
 
 // One photo per view for every color; each print area sits on one view.
 const STANDARD_VIEWS = [
@@ -77,11 +73,11 @@ function readImageSize(file) {
 
 function Section({ title, hint, children, action }) {
   return (
-    <div style={{ ...card, padding: '20px 24px', marginBottom: '16px' }}>
+    <div style={{ ...card, padding: '22px 26px', marginBottom: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: '15px' }}>{title}</div>
-          {hint && <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px' }}>{hint}</div>}
+          <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: '19px' }}>{title}</div>
+          {hint && <div style={{ fontSize: '12px', color: C.muted, marginTop: '3px' }}>{hint}</div>}
         </div>
         {action}
       </div>
@@ -115,10 +111,10 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
   }
 
   return (
-    <div ref={ref} style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: photoUrl ? '#fff' : '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '10px', overflow: 'hidden' }}>
+    <div ref={ref} style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', background: photoUrl ? C.card : C.wash, border: '1px solid #E9E3D6', borderRadius: '10px', overflow: 'hidden' }}>
       {photoUrl
         ? <img src={photoUrl} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none' }} />
-        : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: '12px', textAlign: 'center', padding: '20px' }}>No photo for this color and view yet.</div>}
+        : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.muted, fontSize: '12px', textAlign: 'center', padding: '20px' }}>No photo for this color and view yet.</div>}
       {areas.map((a, i) => {
         if ((a.view_id || viewId) !== viewId) return null
         const b = a.mockup_box
@@ -256,7 +252,7 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={onCancel} style={button}>← Back</button>
-          <span style={{ fontWeight: 800, fontSize: '18px' }}>{isNew ? 'New product' : form.name}</span>
+          <span style={{ fontFamily: SERIF, fontWeight: 500, fontSize: '28px' }}>{isNew ? 'New product' : form.name}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
@@ -265,11 +261,11 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
           <button onClick={handleSave} disabled={saving} style={{ ...primary, opacity: saving ? 0.6 : 1 }}>{saving ? 'Saving…' : 'Save product'}</button>
         </div>
       </div>
-      {error && <div style={{ color: '#DC2626', fontSize: '13px', marginBottom: '16px', background: '#FEF2F2', padding: '10px 14px', borderRadius: '8px' }}>{error}</div>}
+      {error && <div style={{ color: C.red, fontSize: '13px', marginBottom: '16px', background: C.redWash, padding: '10px 14px', borderRadius: '8px' }}>{error}</div>}
 
       <Section title="Basics">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-          <div><span style={label}>Product ID</span><input style={{ ...input, background: isNew ? '#fff' : '#F9FAFB' }} value={form.blank_id} disabled={!isNew} placeholder="e.g. classic-polo" onChange={e => update({ blank_id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} /></div>
+          <div><span style={label}>Product ID</span><input style={{ ...input, background: isNew ? C.card : C.paper }} value={form.blank_id} disabled={!isNew} placeholder="e.g. classic-polo" onChange={e => update({ blank_id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} /></div>
           <div><span style={label}>Name</span><input style={input} value={form.name} onChange={e => update({ name: e.target.value })} /></div>
           <div><span style={label}>Category</span><input style={input} value={form.category} onChange={e => update({ category: e.target.value })} /></div>
           <div><span style={label}>Fabric</span><input style={input} value={form.fabric} onChange={e => update({ fabric: e.target.value })} /></div>
@@ -296,29 +292,29 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
         }>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
           {views.map((v, i) => (
-            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '6px 8px' }}>
+            <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center', border: '1px solid #E9E3D6', borderRadius: '8px', padding: '6px 8px' }}>
               <input style={{ ...input, width: '130px' }} value={v.label} onChange={e => update({ views: views.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} />
-              <span style={{ fontSize: '11px', color: '#9CA3AF', fontFamily: 'monospace' }}>{v.id}</span>
-              {views.length > 1 && <button title={`Remove ${v.label} with its photos and print areas`} style={{ ...button, padding: '4px 8px', fontSize: '12px', color: '#DC2626' }} onClick={() => removeView(v.id)}>✕</button>}
+              <span style={{ fontSize: '11px', color: C.muted, fontFamily: 'monospace' }}>{v.id}</span>
+              {views.length > 1 && <button title={`Remove ${v.label} with its photos and print areas`} style={{ ...button, padding: '4px 8px', fontSize: '12px', color: C.red }} onClick={() => removeView(v.id)}>✕</button>}
             </div>
           ))}
         </div>
-        {!isStandard && <p style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '10px' }}>This product still uses one combined photo. Switching gives it separate front, back and sleeve photos (remove any it doesn't have); SKUs and costs are kept, and each print box needs dragging onto the new photos.</p>}
+        {!isStandard && <p style={{ fontSize: '12px', color: C.muted, marginTop: '10px' }}>This product still uses one combined photo. Switching gives it separate front, back and sleeve photos (remove any it doesn't have); SKUs and costs are kept, and each print box needs dragging onto the new photos.</p>}
       </Section>
 
       <Section title="Colors and photos" hint="Square photos (e.g. 2048×2048), same framing in every color so print boxes line up."
         action={<button style={button} onClick={() => update({ colors: [...form.colors, { name: `Color ${form.colors.length + 1}`, hex: '#CCCCCC', images: {} }] })}>+ Add color</button>}>
         {missingPhotos.length > 0 && (
-          <div style={{ fontSize: '12px', color: '#B45309', background: '#FFFBEB', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px' }}>Missing photos: {missingPhotos.slice(0, 6).join(', ')}{missingPhotos.length > 6 ? ` and ${missingPhotos.length - 6} more` : ''}.</div>
+          <div style={{ fontSize: '12px', color: C.gold, background: C.goldWash, padding: '8px 12px', borderRadius: '8px', marginBottom: '12px' }}>Missing photos: {missingPhotos.slice(0, 6).join(', ')}{missingPhotos.length > 6 ? ` and ${missingPhotos.length - 6} more` : ''}.</div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {form.colors.map((c, i) => (
-            <div key={i} style={{ border: '1px solid #E5E7EB', borderRadius: '10px', padding: '12px' }}>
+            <div key={i} style={{ border: '1px solid #E9E3D6', borderRadius: '10px', padding: '12px' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input style={{ ...input, width: '180px' }} value={c.name} onChange={e => setColor(i, { name: e.target.value })} />
-                <input type="color" value={c.hex} onChange={e => setColor(i, { hex: e.target.value.toUpperCase() })} style={{ width: '40px', height: '34px', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '2px', flexShrink: 0 }} />
+                <input type="color" value={c.hex} onChange={e => setColor(i, { hex: e.target.value.toUpperCase() })} style={{ width: '40px', height: '34px', border: '1px solid #E9E3D6', borderRadius: '8px', padding: '2px', flexShrink: 0 }} />
                 <button style={{ ...button, padding: '6px 10px', fontSize: '12px' }} onClick={() => setPreviewColor(i)}>{previewColor === i ? '✓ Shown in print areas' : 'Show in print areas'}</button>
-                {form.colors.length > 1 && <button style={{ ...button, padding: '6px 10px', fontSize: '12px', color: '#DC2626', marginLeft: 'auto' }} onClick={() => { update({ colors: form.colors.filter((_, j) => j !== i) }); setPreviewColor(0) }}>Remove color</button>}
+                {form.colors.length > 1 && <button style={{ ...button, padding: '6px 10px', fontSize: '12px', color: C.red, marginLeft: 'auto' }} onClick={() => { update({ colors: form.colors.filter((_, j) => j !== i) }); setPreviewColor(0) }}>Remove color</button>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '10px' }}>
                 {views.map(v => {
@@ -326,10 +322,10 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
                   const busy = uploading === `${i}|${v.id}`
                   return (
                     <label key={v.id} style={{ cursor: 'pointer' }}>
-                      <div style={{ aspectRatio: '1 / 1', background: url ? '#fff' : '#F9FAFB', border: `1px ${url ? 'solid' : 'dashed'} #D1D5DB`, borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: '#9CA3AF', textAlign: 'center' }}>
+                      <div style={{ aspectRatio: '1 / 1', background: url ? C.card : C.paper, border: `1px ${url ? 'solid' : 'dashed'} #E9E3D6`, borderRadius: '8px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: C.muted, textAlign: 'center' }}>
                         {url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : busy ? 'Uploading…' : '+ Upload'}
                       </div>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280', marginTop: '4px', textAlign: 'center' }}>{v.label}{url ? ' · replace' : ''}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: C.muted, marginTop: '4px', textAlign: 'center' }}>{v.label}{url ? ' · replace' : ''}</div>
                       <input type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={e => handlePhoto(i, v.id, e)} />
                     </label>
                   )
@@ -355,10 +351,10 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead><tr style={{ background: '#F9FAFB' }}>{['Color', 'Size', 'Factory SKU', 'Base cost ₹', 'In stock'].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', color: '#6B7280', textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
+            <thead><tr style={{ background: C.paper }}>{['Color', 'Size', 'Factory SKU', 'Base cost ₹', 'In stock'].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', color: C.muted, textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
             <tbody>
               {form.variants.map(v => (
-                <tr key={variantKey(v.color, v.size)} style={{ borderTop: '1px solid #F3F4F6' }}>
+                <tr key={variantKey(v.color, v.size)} style={{ borderTop: '1px solid #F1ECE1' }}>
                   <td style={{ padding: '6px 10px' }}>{v.color}</td>
                   <td style={{ padding: '6px 10px', fontWeight: 700 }}>{v.size}</td>
                   <td style={{ padding: '6px 10px' }}><input style={{ ...input, fontFamily: 'monospace' }} value={v.sku} onChange={e => setVariant(v.color, v.size, { sku: e.target.value })} /></td>
@@ -396,7 +392,7 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
                 <div><span style={label}>Min DPI</span><input style={input} type="number" value={area.min_dpi} onChange={e => setArea(selectedArea, { min_dpi: e.target.value })} /></div>
                 <div><span style={label}>Print cost ₹ (added per item)</span><input style={input} type="number" value={area.print_cost ?? 0} onChange={e => setArea(selectedArea, { print_cost: e.target.value })} /></div>
                 <div><span style={label}>Box width on photo (%)</span><input style={input} type="number" step="0.5" value={pct(area.mockup_box.w)} onChange={e => setArea(selectedArea, { mockup_box: { ...area.mockup_box, w: Number(e.target.value) / 100 } })} /></div>
-                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #F3F4F6', paddingTop: '10px' }}>
+                <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #F1ECE1', paddingTop: '10px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
                     <input type="checkbox" checked={!!area.zoom} onChange={e => setArea(selectedArea, { zoom: e.target.checked ? { x: 0, y: 0, w: 0.5 } : undefined })} />
                     Zoom the merchant's editor into part of the photo (for photos showing several sides)
@@ -409,7 +405,7 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
                 ))}
                 {form.print_areas.length > 1 && (
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <button style={{ ...button, color: '#DC2626' }} onClick={() => { update({ print_areas: form.print_areas.filter((_, j) => j !== selectedArea) }); setSelectedArea(0) }}>Remove this area</button>
+                    <button style={{ ...button, color: C.red }} onClick={() => { update({ print_areas: form.print_areas.filter((_, j) => j !== selectedArea) }); setSelectedArea(0) }}>Remove this area</button>
                   </div>
                 )}
               </div>
@@ -423,7 +419,7 @@ function BlankEditor({ initial, isNew, onSaved, onCancel }) {
           <input style={input} value={chart.columns.join(', ')} onChange={e => update({ size_chart: { ...chart, columns: e.target.value.split(',').map(s => s.trim()) } })} />
         </div>
         <table style={{ borderCollapse: 'collapse', fontSize: '13px' }}>
-          <thead><tr>{['Size', ...chart.columns].map((h, i) => <th key={i} style={{ padding: '6px 10px', textAlign: 'left', fontSize: '11px', color: '#6B7280', textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
+          <thead><tr>{['Size', ...chart.columns].map((h, i) => <th key={i} style={{ padding: '6px 10px', textAlign: 'left', fontSize: '11px', color: C.muted, textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
           <tbody>
             {form.sizes.map(s => (
               <tr key={s}>
@@ -473,24 +469,23 @@ export default function CatalogueAdmin() {
   }
 
   return (
+    <>
+    <Heading eyebrow="Blanks merchants design on" title="Catalogue">
+      <button style={primary} onClick={() => { setNotice(''); setEditing({ blank: NEW_BLANK, isNew: true }) }}>New product</button>
+    </Heading>
     <div style={{ ...card, overflow: 'hidden' }}>
-      <div style={{ padding: '20px 24px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span style={{ fontWeight: 700, fontSize: '16px' }}>Catalogue</span>
-        <span style={{ fontSize: '12px', color: '#9CA3AF' }}>Blank products merchants can design on.</span>
-        <button style={{ ...primary, marginLeft: 'auto' }} onClick={() => { setNotice(''); setEditing({ blank: NEW_BLANK, isNew: true }) }}>+ New product</button>
-      </div>
-      {notice && <div style={{ padding: '10px 24px', background: '#F0FDF4', color: '#166534', fontSize: '13px' }}>✓ {notice}</div>}
-      {error && <div style={{ padding: '10px 24px', background: '#FEF2F2', color: '#DC2626', fontSize: '13px' }}>{error}</div>}
+      {notice && <div style={{ padding: '12px 24px', background: C.greenWash, color: C.green, fontSize: '13px', borderBottom: `1px solid ${C.rule}` }}>{notice}</div>}
+      {error && <div style={{ padding: '12px 24px', background: C.redWash, color: C.red, fontSize: '13px', borderBottom: `1px solid ${C.rule}` }}>{error}</div>}
       {loading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: '#9CA3AF' }}>Loading catalogue...</div>
+        <div style={empty}>Loading catalogue…</div>
       ) : blanks.length === 0 ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: '#9CA3AF' }}>No products yet</div>
+        <div style={empty}>No products yet.</div>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: '#F9FAFB' }}>
+            <tr>
               {['Product', 'Colors', 'Sizes', 'Base cost', 'Views', 'Print areas', 'Status', ''].map(h => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                <th key={h} style={th}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -499,29 +494,29 @@ export default function CatalogueAdmin() {
               const costs = b.variants.map(v => v.base_cost)
               const photo = b.colors.map(c => c.image_urls?.[b.views?.[0]?.id] || c.image_url).find(Boolean)
               return (
-                <tr key={b.blank_id} style={{ borderTop: '1px solid #F3F4F6' }}>
-                  <td style={{ padding: '12px 16px' }}>
+                <tr key={b.blank_id} className="atelier-row">
+                  <td style={td}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', background: photo ? '#fff' : b.colors[0]?.hex, border: '1px solid #E5E7EB', overflow: 'hidden', flexShrink: 0 }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '8px', background: photo ? C.card : b.colors[0]?.hex, border: '1px solid #E9E3D6', overflow: 'hidden', flexShrink: 0 }}>
                         {photo && <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{b.name}</div>
-                        <div style={{ fontSize: '11px', color: '#9CA3AF', fontFamily: 'monospace' }}>{b.blank_id}</div>
+                        <div style={{ fontFamily: SERIF, fontSize: '17px' }}>{b.name}</div>
+                        <div style={{ fontSize: '11px', color: C.muted, fontFamily: 'monospace' }}>{b.blank_id}</div>
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: '4px' }}>{b.colors.map(c => <span key={c.name} title={c.name} style={{ width: '14px', height: '14px', borderRadius: '50%', background: c.hex, border: '1px solid #D1D5DB' }} />)}</div>
+                  <td style={td}>
+                    <div style={{ display: 'flex', gap: '4px' }}>{b.colors.map(c => <span key={c.name} title={c.name} style={{ width: '14px', height: '14px', borderRadius: '50%', background: c.hex, border: '1px solid #E9E3D6' }} />)}</div>
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px' }}>{(b.sizes || []).join(', ')}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px' }}>₹{Math.min(...costs)}–{Math.max(...costs)}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px' }}>{(b.views || []).map(v => v.label).join(', ')}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '13px' }}>{b.print_areas.map(a => a.label).join(', ')}</td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ background: b.active ? '#D1FAE5' : '#F3F4F6', color: b.active ? '#065F46' : '#6B7280', padding: '2px 10px', borderRadius: '99px', fontSize: '12px', fontWeight: 600 }}>{b.active ? 'Visible' : 'Hidden'}</span>
+                  <td style={td}>{(b.sizes || []).join(', ')}</td>
+                  <td style={{ ...td, whiteSpace: 'nowrap' }}>₹{Math.min(...costs)}–{Math.max(...costs)}</td>
+                  <td style={td}>{(b.views || []).map(v => v.label).join(', ')}</td>
+                  <td style={td}>{b.print_areas.map(a => a.label).join(', ')}</td>
+                  <td style={td}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', fontSize: '12px', fontWeight: 500, color: b.active ? C.green : C.muted }}><span style={{ width: '7px', height: '7px', borderRadius: '50%', background: b.active ? C.green : C.faint }} />{b.active ? 'Visible' : 'Hidden'}</span>
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                  <td style={{ ...td, textAlign: 'right' }}>
                     <button style={button} onClick={() => { setNotice(''); setEditing({ blank: b, isNew: false }) }}>Edit</button>
                   </td>
                 </tr>
@@ -531,5 +526,6 @@ export default function CatalogueAdmin() {
         </table>
       )}
     </div>
+    </>
   )
 }

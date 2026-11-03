@@ -1,6 +1,14 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: Inter, system-ui, sans-serif; background: #F9F9F7; color: #0A0A0A; }
+body { font-family: Inter, system-ui, sans-serif; background: #FBF9F4; color: #1A1814; -webkit-font-smoothing: antialiased; }
+button:disabled { opacity: 0.45; cursor: not-allowed !important; }
+input:focus, select:focus, textarea:focus { border-color: #A8864A !important; }
+.atelier-row:hover td { background: #FDFBF6; }
 
 @media (max-width: 760px) {
   .admin-areas { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 900px) {
+  .atelier-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  .atelier-stats > div { border-left: none !important; border-bottom: 1px solid #E9E3D6; }
 }
