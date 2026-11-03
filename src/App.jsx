@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
+import CatalogueAdmin from './CatalogueAdmin'
 
 const provider = new GoogleAuthProvider()
 import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping } from './api'
@@ -195,6 +196,7 @@ function AdminDashboard({ user }) {
     { id: 'orders', label: 'Orders' },
     { id: 'stores', label: 'Stores' },
     { id: 'products', label: 'Products' },
+    { id: 'catalogue', label: 'Catalogue' },
   ]
 
   return (
@@ -354,6 +356,8 @@ function AdminDashboard({ user }) {
             )}
           </div>
         )}
+
+        {activeTab === 'catalogue' && <CatalogueAdmin />}
 
         {/* Products Tab */}
         {activeTab === 'products' && (
