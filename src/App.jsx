@@ -248,7 +248,7 @@ function AdminDashboard({ user }) {
   const filteredOrders = orders
     .filter(o => {
       const matchStatus = filterStatus === 'all' || stageOf(o) === filterStatus
-      const matchSearch = !q || [o.order_name, o.shop_domain, o.email, customerName(o)].some(v => (v || '').toLowerCase().includes(q))
+      const matchSearch = !q || [o.order_name, o.shop_domain, o.account_email, o.email, customerName(o)].some(v => (v || '').toLowerCase().includes(q))
       return matchStatus && matchSearch
     })
     .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
@@ -361,7 +361,7 @@ function AdminDashboard({ user }) {
                             </td>
                             <td style={td}>
                               <div style={{ fontWeight: 500 }}>{customerName(o)}</div>
-                              <div style={{ fontSize: '12px', color: C.muted }}>{(o.shop_domain || '').replace('.myshopify.com', '')}</div>
+                              <div style={{ fontSize: '12px', color: C.muted }}>{o.account_email || (o.shop_domain || '').replace('.myshopify.com', '')}</div>
                             </td>
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>{money(o.total_price, o.currency)}</td>
