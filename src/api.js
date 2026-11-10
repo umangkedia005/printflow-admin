@@ -36,15 +36,15 @@ export async function updateOrderStatus(orderId, shop, status) {
 }
 
 export async function fetchProductMappings(shop) {
-  const res = await fetch(`${BASE_URL}/product-mappings?shop=${encodeURIComponent(shop)}`)
+  const res = await fetch(`${BASE_URL}/admin/product-mappings?shop=${encodeURIComponent(shop)}`, { headers: await adminHeaders() })
   const data = await res.json()
   return Array.isArray(data) ? data : []
 }
 
 export async function updateProductMapping({ shop, shopifyProductId, factorySku, fulfillmentCost }) {
-  const res = await fetch(`${BASE_URL}/product-mappings`, {
+  const res = await fetch(`${BASE_URL}/admin/product-mappings`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await adminHeaders(true),
     body: JSON.stringify({
       shop,
       shopify_product_id: shopifyProductId,
