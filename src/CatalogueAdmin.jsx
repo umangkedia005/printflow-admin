@@ -251,7 +251,7 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
   )
 }
 
-function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
+function BlankEditor({ initial, isNew, existingIds, otherSkus, onSaved, onCancel }) {
   const [form, setForm] = useState(() => syncVariants(JSON.parse(JSON.stringify(initial))))
   const [sizesText, setSizesText] = useState(initial.sizes.join(', '))
   const [selectedArea, setSelectedArea] = useState(0)
@@ -277,6 +277,8 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
   // After a save attempt, empty SKU and cost boxes are outlined in red.
   const [triedSave, setTriedSave] = useState(false)
   const missing = value => (triedSave && !String(value ?? '').trim() ? { borderColor: C.red, background: C.redWash } : {})
+  const clashes = form.variants.filter(v => otherSkus[String(v.sku || '').trim()])
+  const clashStyle = sku => (otherSkus[String(sku || '').trim()] ? { borderColor: C.red, background: C.redWash } : {})
 
   const update = patch => setForm(f => syncVariants({ ...f, ...patch }))
   const setColor = (i, patch) => setForm(f => {
@@ -331,6 +333,14 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
     if (!form.blank_id) return 'Set a product ID.'
     if (isNew && existingIds.includes(form.blank_id)) {
       return `A product with ID "${form.blank_id}" already exists, and saving would replace it. Choose another ID, or go back and edit that product.`
+    }
+    const seen = new Set()
+    for (const v of form.variants) {
+      const sku = String(v.sku || '').trim()
+      if (!sku) continue
+      if (otherSkus[sku]) return `SKU ${sku} is already used by "${otherSkus[sku]}". Use a different SKU prefix (e.g. ${skuPrefix}2) and click Fill SKUs again.`
+      if (seen.has(sku)) return `SKU ${sku} is used twice in this product. Each colour and size needs its own.`
+      seen.add(sku)
     }
     const noSku = form.variants.filter(v => !String(v.sku || '').trim())
     if (noSku.length) return `${noSku.length} of ${form.variants.length} variants have no factory SKU. Set a SKU prefix and click Fill SKUs, or type them in the table.`
@@ -526,6 +536,11 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
           ))}
           <button style={button} onClick={applyCosts}>Apply to all colors</button>
         </div>
+        {clashes.length > 0 && (
+          <div style={{ fontSize: '12px', color: C.red, background: C.redWash, padding: '10px 14px', borderRadius: '10px', marginBottom: '14px' }}>
+            {clashes.length} SKU{clashes.length === 1 ? ' is' : 's are'} already used by "{otherSkus[String(clashes[0].sku).trim()]}" (e.g. {clashes[0].sku}). Change the SKU prefix, for example to {skuPrefix}2, and click Fill SKUs again.
+          </div>
+        )}
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
             <thead><tr style={{ background: C.paper }}>{['Color', 'Size', 'Factory SKU', 'Base cost ₹', 'In stock'].map(h => <th key={h} style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', color: C.muted, textTransform: 'uppercase' }}>{h}</th>)}</tr></thead>
@@ -534,7 +549,7 @@ function BlankEditor({ initial, isNew, existingIds, onSaved, onCancel }) {
                 <tr key={variantKey(v.color, v.size)} style={{ borderTop: '1px solid #F1ECE1' }}>
                   <td style={{ padding: '6px 10px' }}>{v.color}</td>
                   <td style={{ padding: '6px 10px', fontWeight: 700 }}>{v.size}</td>
-                  <td style={{ padding: '6px 10px' }}><input style={{ ...input, fontFamily: 'monospace', ...missing(v.sku) }} value={v.sku} placeholder={`${skuPrefix}-${colorCode(v.color)}-${v.size}`} onChange={e => setVariant(v.color, v.size, { sku: e.target.value })} /></td>
+                  <td style={{ padding: '6px 10px' }}><input style={{ ...input, fontFamily: 'monospace', ...missing(v.sku), ...clashStyle(v.sku) }} value={v.sku} placeholder={`${skuPrefix}-${colorCode(v.color)}-${v.size}`} onChange={e => setVariant(v.color, v.size, { sku: e.target.value })} /></td>
                   <td style={{ padding: '6px 10px', width: '120px' }}><input style={{ ...input, ...missing(Number(v.base_cost) > 0 ? v.base_cost : '') }} type="number" value={v.base_cost} placeholder="₹" onChange={e => setVariant(v.color, v.size, { base_cost: e.target.value })} /></td>
                   <td style={{ padding: '6px 10px' }}><input type="checkbox" checked={v.in_stock} onChange={e => setVariant(v.color, v.size, { in_stock: e.target.checked })} /></td>
                 </tr>
@@ -673,6 +688,7 @@ export default function CatalogueAdmin() {
         initial={editing.blank}
         isNew={editing.isNew}
         existingIds={blanks.map(b => b.blank_id)}
+        otherSkus={Object.fromEntries(blanks.filter(b => b.blank_id !== editing.blank.blank_id || editing.isNew).flatMap(b => b.variants.map(v => [v.sku, b.name])))}
         onCancel={() => setEditing(null)}
         onSaved={saved => {
           setBlanks(list => [...list.filter(b => b.blank_id !== saved.blank_id), saved].sort((a, b) => a.sort_order - b.sort_order))
