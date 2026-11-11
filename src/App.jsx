@@ -3,6 +3,7 @@ import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from
 import { auth } from './firebase'
 import CatalogueAdmin from './CatalogueAdmin'
 import SettingsAdmin from './SettingsAdmin'
+import GarmentsAdmin from './GarmentsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
 import PrintSheet from './PrintSheet'
@@ -299,6 +300,7 @@ function AdminDashboard({ user }) {
     { id: 'stores', label: 'Stores' },
     { id: 'products', label: 'Products' },
     { id: 'catalogue', label: 'Catalogue' },
+    { id: 'garments', label: 'Garments' },
     { id: 'settings', label: 'Settings' },
   ]
 
@@ -477,6 +479,7 @@ function AdminDashboard({ user }) {
         )}
 
         {activeTab === 'catalogue' && <CatalogueAdmin />}
+        {activeTab === 'garments' && <GarmentsAdmin />}
         {activeTab === 'settings' && <SettingsAdmin />}
       </main>
     </div>

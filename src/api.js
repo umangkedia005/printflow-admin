@@ -124,3 +124,41 @@ export async function saveSettings(values) {
   if (!res.ok) throw new Error(data.error || 'Failed to save settings')
   return data
 }
+
+// Customers' own garments (My garments), for review.
+export async function fetchGarmentsAdmin() {
+  const res = await fetch(`${BASE_URL}/admin/garments`, { headers: await adminHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not load garments')
+  return Array.isArray(data) ? data : []
+}
+
+// decision: 'approve' (with adjusted areas) or 'reject' (with a note).
+export async function reviewGarment(review) {
+  const res = await fetch(`${BASE_URL}/admin/garments/review`, {
+    method: 'POST',
+    headers: await adminHeaders(true),
+    body: JSON.stringify(review),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not save the review')
+  return data
+}
+
+export async function fetchGarmentCosts() {
+  const res = await fetch(`${BASE_URL}/admin/garment-costs`, { headers: await adminHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not load garment print costs')
+  return data
+}
+
+export async function saveGarmentCosts(costs) {
+  const res = await fetch(`${BASE_URL}/admin/garment-costs`, {
+    method: 'POST',
+    headers: await adminHeaders(true),
+    body: JSON.stringify(costs),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not save garment print costs')
+  return data
+}

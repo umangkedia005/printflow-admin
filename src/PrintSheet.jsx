@@ -26,6 +26,7 @@ export default function PrintSheet({ order, onClose }) {
                   <div>
                     <div style={{ fontWeight: 600, color: C.ink }}>{item.name}</div>
                     <div style={{ fontSize: '12px', color: C.muted, marginTop: '2px' }}>{item.variant_title}{item.sku ? ` · SKU ${item.sku}` : ''}</div>
+                    {item.customer_garment && <div style={{ display: 'inline-block', marginTop: '6px', fontSize: '11px', fontWeight: 600, color: C.gold, background: C.goldWash, padding: '2px 8px', borderRadius: '99px' }}>Customer's garment: print on the shirts they sent</div>}
                   </div>
                   <div style={{ fontFamily: SERIF, fontSize: '18px', color: C.ink, whiteSpace: 'nowrap' }}>× {item.quantity}</div>
                 </div>
