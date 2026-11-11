@@ -2,6 +2,23 @@ import { createPortal } from 'react-dom'
 import { C, SERIF, SANS, button } from './theme'
 
 const inch = n => `${Number(n).toFixed(1)}″`
+const pct = n => `${n * 100}%`
+
+// The finished look: the garment photo for this side in the ordered colour,
+// with the artwork placed where it prints and cut to the print area.
+function Mockup({ p }) {
+  const box = p.mockup_box || {}
+  const aw = Number(p.area_w_in), ah = Number(p.area_h_in)
+  const x = Number(p.x_in ?? p.from_left_in), y = Number(p.y_in ?? p.from_top_in)
+  return (
+    <div style={{ position: 'relative', width: '170px', aspectRatio: '1 / 1', flexShrink: 0, borderRadius: '10px', overflow: 'hidden', background: C.card, border: `1px solid ${C.rule}` }}>
+      <img src={p.mockup_photo_url} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', maxWidth: 'none' }} />
+      <div style={{ position: 'absolute', left: pct(Number(box.x)), top: pct(Number(box.y)), width: pct(Number(box.w)), height: pct(Number(box.h)), outline: '1px dashed rgba(43,91,168,0.55)', overflow: 'hidden' }}>
+        <img src={p.file_url} alt="" style={{ position: 'absolute', maxWidth: 'none', left: pct(x / aw), top: pct(y / ah), width: pct(Number(p.artwork_w_in) / aw), height: pct(Number(p.artwork_h_in) / ah) }} />
+      </div>
+    </div>
+  )
+}
 
 // Everything the printer needs for one order: per item, which file goes on
 // which side, how big, and where, measured from the print area's top-left.
@@ -9,7 +26,7 @@ export default function PrintSheet({ order, onClose }) {
   const items = order.items || []
   return createPortal(
     <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(26,24,20,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', fontFamily: SANS }}>
-      <div style={{ background: C.card, borderRadius: '16px', width: '100%', maxWidth: '680px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.2)' }}>
+      <div style={{ background: C.card, borderRadius: '16px', width: '100%', maxWidth: '760px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '22px 26px', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
           <div>
             <div style={{ fontFamily: SERIF, fontSize: '22px', color: C.ink }}>Print details · {(order.order_name || order.order_id).replace('#', '')}</div>
@@ -33,15 +50,20 @@ export default function PrintSheet({ order, onClose }) {
 
                 {prints.length > 0 ? prints.map(p => (
                   <div key={p.area_id} style={{ display: 'flex', gap: '14px', marginTop: '12px', background: C.wash, borderRadius: '10px', padding: '12px' }}>
-                    <a href={p.file_url} target="_blank" rel="noopener noreferrer" style={{ width: '64px', height: '64px', flexShrink: 0, borderRadius: '8px', background: C.card, border: `1px solid ${C.rule}`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img src={p.file_url} alt="" style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }} />
-                    </a>
+                    {p.mockup_photo_url && p.mockup_box ? <Mockup p={p} /> : (
+                      <a href={p.file_url} target="_blank" rel="noopener noreferrer" style={{ width: '64px', height: '64px', flexShrink: 0, borderRadius: '8px', background: C.card, border: `1px solid ${C.rule}`, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src={p.file_url} alt="" style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }} />
+                      </a>
+                    )}
                     <div style={{ fontSize: '12px', color: C.inkSoft, lineHeight: 1.7, flex: 1 }}>
                       <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.gold }}>{p.area}</div>
                       <div><strong style={{ color: C.ink }}>Print size {inch(p.printed_w_in)} × {inch(p.printed_h_in)}</strong> · {inch(p.from_left_in)} from left, {inch(p.from_top_in)} from top of the {inch(p.area_w_in)} × {inch(p.area_h_in)} area</div>
                       <div style={{ color: C.muted }}>File {p.px_w} × {p.px_h}px · {Math.round(p.px_w / p.artwork_w_in)} DPI at this size</div>
                       {p.clipped && <div style={{ color: C.red }}>Artwork runs past the print area: print only the part inside it (artwork is {inch(p.artwork_w_in)} × {inch(p.artwork_h_in)}).</div>}
-                      <a href={p.file_url} target="_blank" rel="noopener noreferrer" style={{ color: C.blue }}>Download file</a>
+                      <div style={{ display: 'flex', gap: '14px', marginTop: '4px' }}>
+                        <a href={p.download_url || p.file_url} style={{ color: C.blue }}>Download file</a>
+                        <a href={p.file_url} target="_blank" rel="noopener noreferrer" style={{ color: C.muted }}>View</a>
+                      </div>
                     </div>
                   </div>
                 )) : item.print_file_url ? (
