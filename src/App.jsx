@@ -5,6 +5,7 @@ import CatalogueAdmin from './CatalogueAdmin'
 import SettingsAdmin from './SettingsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
+import PrintSheet from './PrintSheet'
 
 const provider = new GoogleAuthProvider()
 import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping } from './api'
@@ -170,7 +171,7 @@ function OrderThumb({ items }) {
   )
 }
 
-function PrintFiles({ items }) {
+function PrintFiles({ items, onDetails }) {
   const list = items || []
   const missing = list.filter(i => !i.print_file_url).length
   return (
@@ -185,6 +186,7 @@ function PrintFiles({ items }) {
         {list.filter(i => i.print_file_url).map((i, idx) => (
           <a key={idx} href={i.print_file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: C.muted, textDecorationColor: C.rule, textUnderlineOffset: '3px' }}>File {idx + 1}</a>
         ))}
+        {list.length > 0 && <button onClick={onDetails} style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', color: C.blue, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px', fontFamily: SANS }}>Print details</button>}
       </div>
     </div>
   )
@@ -197,6 +199,7 @@ function AdminDashboard({ user }) {
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState(null)
   const [statusError, setStatusError] = useState('')
+  const [printSheetFor, setPrintSheetFor] = useState(null)
   const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [productShop, setProductShop] = useState('')
@@ -281,6 +284,7 @@ function AdminDashboard({ user }) {
 
   return (
     <div style={{ minHeight: '100vh', background: C.paper, fontFamily: SANS, color: C.ink }}>
+      {printSheetFor && <PrintSheet order={printSheetFor} onClose={() => setPrintSheetFor(null)} />}
       <header style={{ borderBottom: `1px solid ${C.rule}`, background: C.paper, position: 'sticky', top: 0, zIndex: 20 }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 32px', display: 'flex', alignItems: 'center', gap: '36px', height: '64px' }}>
           <Wordmark />
@@ -363,7 +367,7 @@ function AdminDashboard({ user }) {
                               <div style={{ fontWeight: 500 }}>{customerName(o)}</div>
                               <div style={{ fontSize: '12px', color: C.muted }}>{o.account_email || (o.shop_domain || '').replace('.myshopify.com', '')}</div>
                             </td>
-                            <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} /></td>
+                            <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>{money(o.total_price, o.currency)}</td>
                             <td style={td}><StatusLabel stage={stage} /></td>
                             <td style={{ ...td, color: C.muted, whiteSpace: 'nowrap', fontSize: '12px' }}>{longDate(o.created_at)}</td>
