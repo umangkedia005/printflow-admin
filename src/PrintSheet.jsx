@@ -74,6 +74,45 @@ function MockupDownload({ p, filename }) {
   )
 }
 
+// Where the parcel goes, for booking the courier (e.g. in ProShip).
+function ShipTo({ order }) {
+  const [copied, setCopied] = useState(false)
+  const raw = order.raw || {}
+  const a = raw.shipping_address || {}
+  const method = order.breakdown?.shipping_method || raw.shipping_lines?.[0]?.title
+  const lines = [
+    a.name,
+    a.address1,
+    a.address2,
+    [a.city, a.province, a.zip].filter(Boolean).join(', '),
+    a.country && a.country !== 'IN' ? a.country : null,
+  ].filter(Boolean)
+  const phone = a.phone || raw.phone
+  if (!lines.length) {
+    return <div style={{ fontSize: '12px', color: C.muted, padding: '14px 0' }}>{order.redacted_at ? 'Address removed at the customer\'s request.' : 'No shipping address on this order.'}</div>
+  }
+  async function copy() {
+    await navigator.clipboard.writeText([...lines, phone && `Phone: ${phone}`].filter(Boolean).join('\n'))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '16px 18px', background: C.wash, borderRadius: '10px', marginTop: '16px' }}>
+      <div style={{ fontSize: '13px', color: C.inkSoft, lineHeight: 1.6 }}>
+        <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.gold, marginBottom: '4px' }}>Ship to</div>
+        {lines.map((l, i) => <div key={i} style={i === 0 ? { fontWeight: 600, color: C.ink } : undefined}>{l}</div>)}
+        {phone && <div>Phone: {phone}</div>}
+        {order.email && <div style={{ color: C.muted }}>{order.email}</div>}
+      </div>
+      <div style={{ textAlign: 'right', fontSize: '12px', color: C.inkSoft, lineHeight: 1.7, flexShrink: 0 }}>
+        {method && <div><span style={{ color: C.muted }}>Shipping</span> <strong style={{ color: C.ink, textTransform: 'capitalize' }}>{method}</strong></div>}
+        {order.reference && <div><span style={{ color: C.muted }}>Ref</span> {order.reference}</div>}
+        <button onClick={copy} style={{ ...button, padding: '5px 12px', fontSize: '12px', marginTop: '6px' }}>{copied ? 'Copied ✓' : 'Copy address'}</button>
+      </div>
+    </div>
+  )
+}
+
 // The finished look: the garment photo for this side in the ordered colour,
 // with the artwork placed where it prints and cut to the print area.
 function Mockup({ p }) {
@@ -105,6 +144,7 @@ export default function PrintSheet({ order, onClose }) {
           <button onClick={onClose} style={{ ...button, padding: '6px 12px' }}>Close</button>
         </div>
         <div style={{ padding: '8px 26px 24px' }}>
+          <ShipTo order={order} />
           {items.map((item, i) => {
             const prints = item.prints || []
             return (
