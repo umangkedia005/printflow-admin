@@ -6,6 +6,7 @@ import SettingsAdmin from './SettingsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
 import PrintSheet from './PrintSheet'
+import ShipDialog from './ShipDialog'
 
 const provider = new GoogleAuthProvider()
 import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping } from './api'
@@ -200,6 +201,8 @@ function AdminDashboard({ user }) {
   const [updatingId, setUpdatingId] = useState(null)
   const [statusError, setStatusError] = useState('')
   const [printSheetFor, setPrintSheetFor] = useState(null)
+  const [shipping, setShipping] = useState(null)
+  const [shipError, setShipError] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [productShop, setProductShop] = useState('')
@@ -235,6 +238,8 @@ function AdminDashboard({ user }) {
 
   // Only show the new status once the server has saved it.
   async function handleStatusChange(order, nextStatus) {
+    // Shipping asks for the courier and tracking first.
+    if (nextStatus === 'shipped') { setShipError(''); setShipping(order); return }
     setUpdatingId(order.order_id)
     setStatusError('')
     try {
@@ -242,6 +247,21 @@ function AdminDashboard({ user }) {
       setOrders(prev => prev.map(o => o.order_id === order.order_id ? { ...o, status: nextStatus } : o))
     } catch (err) {
       setStatusError(`${order.order_name || order.order_id}: ${err.message}`)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  async function confirmShipped(order, raw) {
+    const tracking = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, v.trim()]).filter(([, v]) => v))
+    setUpdatingId(order.order_id)
+    setShipError('')
+    try {
+      await updateOrderStatus(order.order_id, order.shop_domain, 'shipped', tracking)
+      setOrders(prev => prev.map(o => o.order_id === order.order_id ? { ...o, status: 'shipped', ...(Object.keys(tracking).length ? { tracking } : {}) } : o))
+      setShipping(null)
+    } catch (err) {
+      setShipError(err.message)
     } finally {
       setUpdatingId(null)
     }
@@ -285,6 +305,7 @@ function AdminDashboard({ user }) {
   return (
     <div style={{ minHeight: '100vh', background: C.paper, fontFamily: SANS, color: C.ink }}>
       {printSheetFor && <PrintSheet order={printSheetFor} onClose={() => setPrintSheetFor(null)} />}
+      {shipping && <ShipDialog order={shipping} saving={updatingId === shipping.order_id} error={shipError} onCancel={() => setShipping(null)} onConfirm={t => confirmShipped(shipping, t)} />}
       <header style={{ borderBottom: `1px solid ${C.rule}`, background: C.paper, position: 'sticky', top: 0, zIndex: 20 }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 32px', display: 'flex', alignItems: 'center', gap: '36px', height: '64px' }}>
           <Wordmark />
@@ -369,7 +390,7 @@ function AdminDashboard({ user }) {
                             </td>
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>{money(o.total_price, o.currency)}</td>
-                            <td style={td}><StatusLabel stage={stage} /></td>
+                            <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}</td>
                             <td style={{ ...td, color: C.muted, whiteSpace: 'nowrap', fontSize: '12px' }}>{longDate(o.created_at)}</td>
                             <td style={{ ...td, textAlign: 'right' }}>
                               {next && (

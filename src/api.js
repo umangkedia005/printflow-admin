@@ -24,11 +24,12 @@ export async function fetchAllStores() {
   return Array.isArray(data) ? data : []
 }
 
-export async function updateOrderStatus(orderId, shop, status) {
+// tracking ({ courier, number, url }) is only sent with "shipped".
+export async function updateOrderStatus(orderId, shop, status, tracking = null) {
   const res = await fetch(`${BASE_URL}/admin/order-status`, {
     method: 'POST',
     headers: await adminHeaders(true),
-    body: JSON.stringify({ order_id: orderId, shop_domain: shop, status }),
+    body: JSON.stringify({ order_id: orderId, shop_domain: shop, status, ...(tracking ? { tracking } : {}) }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Could not update the order')
