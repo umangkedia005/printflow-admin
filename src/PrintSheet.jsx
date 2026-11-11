@@ -1,8 +1,78 @@
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { C, SERIF, SANS, button } from './theme'
 
 const inch = n => `${Number(n).toFixed(1)}″`
 const pct = n => `${n * 100}%`
+
+// Images are fetched fresh (not from the page's cache) so the canvas may read
+// them: the artwork bucket allows this site, but a cached copy loaded without
+// CORS would block the export.
+async function loadImage(url) {
+  const res = await fetch(url, { mode: 'cors', cache: 'no-store' })
+  if (!res.ok) throw new Error('Could not load an image for the mockup.')
+  const blobUrl = URL.createObjectURL(await res.blob())
+  try {
+    const img = new Image()
+    img.src = blobUrl
+    await img.decode()
+    return img
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 0)
+  }
+}
+
+// One PNG of the finished side: the garment photo at full size with the
+// artwork drawn where it prints, cut to the print area (same as the preview).
+async function downloadMockup(p, filename) {
+  const [photo, art] = await Promise.all([loadImage(p.mockup_photo_url), loadImage(p.file_url)])
+  const size = Math.max(photo.naturalWidth, photo.naturalHeight)
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#FFFFFF'
+  ctx.fillRect(0, 0, size, size)
+  ctx.drawImage(photo, (size - photo.naturalWidth) / 2, (size - photo.naturalHeight) / 2)
+  const box = p.mockup_box
+  const bx = Number(box.x) * size, by = Number(box.y) * size, bw = Number(box.w) * size, bh = Number(box.h) * size
+  const aw = Number(p.area_w_in), ah = Number(p.area_h_in)
+  const x = Number(p.x_in ?? p.from_left_in), y = Number(p.y_in ?? p.from_top_in)
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(bx, by, bw, bh)
+  ctx.clip()
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(art, bx + (x / aw) * bw, by + (y / ah) * bh, (Number(p.artwork_w_in) / aw) * bw, (Number(p.artwork_h_in) / ah) * bh)
+  ctx.restore()
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+}
+
+function MockupDownload({ p, filename }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  async function go() {
+    setBusy(true)
+    setError('')
+    try {
+      await downloadMockup(p, filename)
+    } catch (err) {
+      setError(err.message || 'Could not make the mockup.')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <>
+      <button onClick={go} disabled={busy} style={{ background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', fontFamily: SANS }}>{busy ? 'Making mockup…' : 'Download mockup'}</button>
+      {error && <span style={{ color: C.red }}>{error}</span>}
+    </>
+  )
+}
 
 // The finished look: the garment photo for this side in the ordered colour,
 // with the artwork placed where it prints and cut to the print area.
@@ -62,6 +132,7 @@ export default function PrintSheet({ order, onClose }) {
                       {p.clipped && <div style={{ color: C.red }}>Artwork runs past the print area: print only the part inside it (artwork is {inch(p.artwork_w_in)} × {inch(p.artwork_h_in)}).</div>}
                       <div style={{ display: 'flex', gap: '14px', marginTop: '4px' }}>
                         <a href={p.download_url || p.file_url} style={{ color: C.blue }}>Download file</a>
+                        {p.mockup_photo_url && p.mockup_box && <MockupDownload p={p} filename={`${order.order_id}_${p.area_id}_mockup.png`} />}
                         <a href={p.file_url} target="_blank" rel="noopener noreferrer" style={{ color: C.muted }}>View</a>
                       </div>
                     </div>
