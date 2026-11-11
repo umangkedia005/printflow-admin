@@ -390,7 +390,7 @@ function AdminDashboard({ user }) {
                             </td>
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>{money(o.total_price, o.currency)}</td>
-                            <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}</td>
+                            <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}{o.shipment_status && <div style={{ fontSize: '11px', color: C.gold, marginTop: '2px' }}>ProShip: {o.shipment_status}</div>}</td>
                             <td style={{ ...td, color: C.muted, whiteSpace: 'nowrap', fontSize: '12px' }}>{longDate(o.created_at)}</td>
                             <td style={{ ...td, textAlign: 'right' }}>
                               {next && (

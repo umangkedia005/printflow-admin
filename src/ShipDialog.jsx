@@ -16,8 +16,9 @@ export default function ShipDialog({ order, onCancel, onConfirm, saving, error }
         <div style={{ fontSize: '12px', color: C.muted, margin: '4px 0 18px' }}>The merchant gets an email with these details. All optional.</div>
         <label style={label}>COURIER</label>
         <input style={{ ...input, marginBottom: '12px' }} value={courier} onChange={e => setCourier(e.target.value)} placeholder="Delhivery, Blue Dart, India Post…" autoFocus />
-        <label style={label}>TRACKING NUMBER</label>
-        <input style={{ ...input, marginBottom: '12px' }} value={number} onChange={e => setNumber(e.target.value)} placeholder="e.g. 1234567890" />
+        <label style={label}>TRACKING NUMBER (AWB)</label>
+        <input style={input} value={number} onChange={e => setNumber(e.target.value)} placeholder="e.g. 1234567890" />
+        <div style={{ fontSize: '11px', color: C.muted, margin: '5px 0 12px' }}>For ProShip parcels, use the AWB from the ProShip panel: the order then updates itself until it's delivered.</div>
         <label style={label}>TRACKING LINK</label>
         <input style={input} value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" />
         {error && <div style={{ color: C.red, fontSize: '12px', marginTop: '10px' }}>{error}</div>}
