@@ -27,7 +27,11 @@ function Review({ g, onDone }) {
   const [note, setNote] = useState(g.note || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const editable = g.status !== 'approved'
+  const [editing, setEditing] = useState(g.status !== 'approved')
+  const editable = editing
+  // What the team charges for the garment itself, per size.
+  const [prices, setPrices] = useState(() => Object.fromEntries((g.sizes || []).map(s => [s, g.prices?.[s] ?? ''])))
+  const unpriced = (g.sizes || []).filter(s => !(Number(prices[s]) > 0))
   const set = (id, patch) => setAreas(list => list.map(a => (a.id === id ? { ...a, ...patch } : a)))
   const setBox = (id, k, v) => setAreas(list => list.map(a => (a.id === id ? { ...a, mockup_box: { ...a.mockup_box, [k]: v } } : a)))
   // The box's height follows the print area's real proportions.
@@ -35,11 +39,13 @@ function Review({ g, onDone }) {
 
   async function decide(decision) {
     if (decision === 'reject' && !note.trim()) return setError('Add a note so the customer knows what to fix.')
+    if (decision === 'approve' && unpriced.length) return setError(`Set the garment price for ${unpriced.join(', ')}.`)
     setBusy(true)
     setError('')
     try {
       await reviewGarment({
         email: g.email, garment_id: g.garment_id, decision, note,
+        prices: Object.fromEntries(Object.entries(prices).map(([s, v]) => [s, Number(v)])),
         areas: areas.map(a => ({ id: a.id, remove: a.remove, width_in: Number(a.width_in), height_in: Number(a.height_in), print_cost: Number(a.print_cost), mockup_box: { x: Number(a.mockup_box.x), y: Number(a.mockup_box.y), w: Number(a.mockup_box.w) } })),
       })
       onDone()
@@ -91,17 +97,37 @@ function Review({ g, onDone }) {
         ))}
       </div>
 
+      <div style={{ marginTop: '18px' }}>
+        <span style={label}>GARMENT PRICE PER PIECE ₹ (what the customer pays for the garment, before printing)</span>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {(g.sizes || []).map(s => (
+            <div key={s} style={{ width: '90px' }}>
+              <span style={{ ...label, marginBottom: '3px' }}>{s}</span>
+              {editable
+                ? <input style={{ ...input, padding: '6px 8px' }} type="number" min="1" step="1" value={prices[s]} onChange={e => setPrices(p => ({ ...p, [s]: e.target.value }))} />
+                : <div style={{ fontSize: '13px', color: g.prices?.[s] ? C.ink : C.red }}>{g.prices?.[s] ? `₹${Number(g.prices[s])}` : 'Not set'}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {editable ? (
         <div style={{ marginTop: '18px' }}>
           <span style={label}>NOTE FOR THE CUSTOMER (required to reject)</span>
           <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} maxLength={500} placeholder="e.g. Approved: courier the garments to our Pune unit. Or: the back photo is blurry, please retake it." style={{ ...input, resize: 'vertical' }} />
           {error && <div style={{ color: C.red, fontSize: '12px', marginTop: '8px' }}>{error}</div>}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+            {g.status === 'approved' && <button style={button} disabled={busy} onClick={() => setEditing(false)}>Cancel</button>}
             <button style={outline} disabled={busy} onClick={() => decide('reject')}>Reject</button>
-            <button style={primary} disabled={busy} onClick={() => decide('approve')}>{busy ? 'Saving…' : 'Approve'}</button>
+            <button style={primary} disabled={busy} onClick={() => decide('approve')}>{busy ? 'Saving…' : g.status === 'approved' ? 'Save changes' : 'Approve'}</button>
           </div>
         </div>
-      ) : g.note && <div style={{ fontSize: '12px', color: C.muted, marginTop: '12px' }}>Note: {g.note}</div>}
+      ) : (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '14px' }}>
+          <div style={{ fontSize: '12px', color: C.muted }}>{g.note ? `Note: ${g.note}` : ''}</div>
+          <button style={{ ...button, padding: '6px 14px', fontSize: '12px' }} onClick={() => setEditing(true)}>Edit price & positions</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -127,7 +153,7 @@ export default function GarmentsAdmin() {
           ))}
         </div>
       </Heading>
-      <p style={{ color: C.muted, fontSize: '13px', marginTop: '-8px', marginBottom: '16px' }}>Customers send us these garments and we print on them. Check each photo, adjust where printing goes, set the print cost, then approve or reject.</p>
+      <p style={{ color: C.muted, fontSize: '13px', marginTop: '-8px', marginBottom: '16px' }}>Garment styles customers want; we source them. Check the photos, adjust where printing goes, set the garment price per size and the print costs, then approve or reject.</p>
       {error && <div style={{ color: C.red, fontSize: '13px', marginBottom: '16px', background: C.redWash, padding: '10px 14px', borderRadius: '10px' }}>{error}</div>}
       {garments === null ? (
         <div style={{ color: C.muted, fontFamily: SERIF, fontSize: '16px' }}>Loading garments…</div>
