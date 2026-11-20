@@ -10,7 +10,7 @@ import PrintSheet from './PrintSheet'
 import ShipDialog from './ShipDialog'
 
 const provider = new GoogleAuthProvider()
-import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping } from './api'
+import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore } from './api'
 
 const ALLOWED_EMAILS = [
   'umangkedia5@gmail.com',
@@ -238,6 +238,17 @@ function AdminDashboard({ user }) {
   }
 
   // Only show the new status once the server has saved it.
+  // Lets another account (e.g. the App Review test account) link this store.
+  async function handleUnlink(store) {
+    if (!window.confirm(`Unlink ${store.shop_domain} from ${store.user_email}? The next account to open the app from this store will be linked instead. Orders stay.`)) return
+    try {
+      await unlinkStore(store.shop_domain)
+      setStores(list => list.map(s => (s.shop_domain === store.shop_domain ? { ...s, user_email: undefined } : s)))
+    } catch (err) {
+      window.alert(err.message)
+    }
+  }
+
   async function handleStatusChange(order, nextStatus) {
     // Shipping asks for the courier and tracking first.
     if (nextStatus === 'shipped') { setShipError(''); setShipping(order); return }
@@ -423,7 +434,7 @@ function AdminDashboard({ user }) {
                 <div style={empty}>No stores connected yet.</div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead><tr>{['Store', 'Plan', 'Orders', 'Installed'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
+                  <thead><tr>{['Store', 'Linked account', 'Plan', 'Orders', 'Installed'].map(h => <th key={h} style={th}>{h}</th>)}</tr></thead>
                   <tbody>
                     {stores.map((s, i) => {
                       const paid = s.current_plan && s.current_plan !== 'free'
@@ -432,6 +443,14 @@ function AdminDashboard({ user }) {
                           <td style={td}>
                             <div style={{ fontFamily: SERIF, fontSize: '16px' }}>{(s.shop_domain || '').replace('.myshopify.com', '')}</div>
                             <div style={{ fontSize: '11px', color: C.faint }}>{s.shop_domain}</div>
+                          </td>
+                          <td style={{ ...td, fontSize: '12px' }}>
+                            {s.user_email ? (
+                              <>
+                                <div>{s.user_email}</div>
+                                <button onClick={() => handleUnlink(s)} style={{ background: 'none', border: 'none', padding: 0, color: C.red, fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', fontFamily: SANS }}>Unlink</button>
+                              </>
+                            ) : <span style={{ color: C.faint }}>Not linked</span>}
                           </td>
                           <td style={td}>
                             <span style={{ background: paid ? C.goldWash : C.wash, color: paid ? C.gold : C.muted, padding: '3px 12px', borderRadius: '99px', fontSize: '12px', fontWeight: 500, textTransform: 'capitalize' }}>{s.current_plan || 'free'}</span>

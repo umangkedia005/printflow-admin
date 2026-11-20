@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { fetchSettings, saveSettings, fetchGarmentCosts, saveGarmentCosts } from './api'
-import { C, SERIF, panel, input, label, primary } from './theme'
+import { fetchSettings, saveSettings, fetchGarmentCosts, saveGarmentCosts, fetchAccountWallet, creditWallet } from './api'
+import { C, SERIF, panel, input, label, primary, button } from './theme'
 import Heading from './Heading'
 
 const FIELDS = [
@@ -67,6 +67,7 @@ export default function SettingsAdmin() {
           </>
         )}
       </div>
+      <WalletCredit />
       <GarmentCosts />
     </>
   )
@@ -119,6 +120,63 @@ function GarmentCosts() {
             </tbody>
           </table>
         )}
+      </div>
+    </div>
+  )
+}
+
+
+// Add money to any account's wallet: test credit for Shopify's reviewers,
+// refunds, goodwill. The customer sees it in their wallet history and gets
+// a receipt email.
+function WalletCredit() {
+  const [email, setEmail] = useState('')
+  const [account, setAccount] = useState(null)
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+
+  async function lookUp() {
+    setBusy(true); setError(''); setNotice(''); setAccount(null)
+    try { setAccount(await fetchAccountWallet(email.trim())) } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+  async function credit() {
+    if (!window.confirm(`Add ₹${amount} to ${email.trim()}'s wallet?`)) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const res = await creditWallet(email.trim(), Number(amount), note.trim())
+      setAccount(a => ({ ...(a || {}), email: res.email, balance: res.balance }))
+      setNotice(`Added ₹${Number(res.credited)}. New balance ₹${Number(res.balance)}.`)
+      setAmount(''); setNote('')
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+
+  return (
+    <div style={{ marginTop: '32px' }}>
+      <Heading eyebrow="Accounts" title="Wallet credit" />
+      <p style={{ color: C.muted, fontSize: '13px', marginTop: '-8px', marginBottom: '16px' }}>Add money to an account's wallet without a payment: test credit for Shopify's reviewers, a refund, or goodwill. Shown in their wallet history; they get a receipt email.</p>
+      {error && <div style={{ color: C.red, fontSize: '13px', marginBottom: '16px', background: C.redWash, padding: '10px 14px', borderRadius: '10px' }}>{error}</div>}
+      {notice && <div style={{ color: C.green, fontSize: '13px', marginBottom: '16px', background: C.greenWash, padding: '10px 14px', borderRadius: '10px' }}>{notice}</div>}
+      <div style={{ ...panel, padding: '22px 26px' }}>
+        <span style={label}>ACCOUNT EMAIL</span>
+        <div style={{ display: 'flex', gap: '8px', maxWidth: '520px' }}>
+          <input style={input} type="email" value={email} onChange={e => { setEmail(e.target.value); setAccount(null) }} placeholder="customer@example.com" />
+          <button style={button} disabled={busy || !email.includes('@')} onClick={lookUp}>Look up</button>
+        </div>
+        {account && (
+          <div style={{ fontSize: '13px', color: C.inkSoft, marginTop: '10px', lineHeight: 1.6 }}>
+            Balance <strong style={{ color: C.ink }}>₹{Number(account.balance)}</strong>
+            {account.has_wallet === false && <span style={{ color: C.muted }}> · no wallet yet (it's created with the first credit)</span>}
+            {account.stores?.length > 0 && <div style={{ color: C.muted }}>Linked stores: {account.stores.join(', ')}</div>}
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto', gap: '10px', alignItems: 'end', marginTop: '16px', maxWidth: '720px' }}>
+          <div><span style={label}>AMOUNT ₹</span><input style={input} type="number" min="1" step="1" value={amount} onChange={e => setAmount(e.target.value)} /></div>
+          <div><span style={label}>NOTE (shown to the customer)</span><input style={input} value={note} maxLength={120} onChange={e => setNote(e.target.value)} placeholder="e.g. App Review test credit" /></div>
+          <button style={primary} disabled={busy || !email.includes('@') || !(Number(amount) >= 1) || !note.trim()} onClick={credit}>{busy ? 'Saving…' : 'Add credit'}</button>
+        </div>
       </div>
     </div>
   )

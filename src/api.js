@@ -162,3 +162,35 @@ export async function saveGarmentCosts(costs) {
   if (!res.ok) throw new Error(data.error || 'Could not save garment print costs')
   return data
 }
+
+// An account's wallet balance and linked stores.
+export async function fetchAccountWallet(email) {
+  const res = await fetch(`${BASE_URL}/admin/wallet?email=${encodeURIComponent(email)}`, { headers: await adminHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not look up that account')
+  return data
+}
+
+// Add money to an account's wallet (test credit, refund, goodwill).
+export async function creditWallet(email, amount, note) {
+  const res = await fetch(`${BASE_URL}/admin/wallet-credit`, {
+    method: 'POST',
+    headers: await adminHeaders(true),
+    body: JSON.stringify({ email, amount, note }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not add the credit')
+  return data
+}
+
+// Detach a store from its account so another account can link it.
+export async function unlinkStore(shop) {
+  const res = await fetch(`${BASE_URL}/admin/stores/unlink`, {
+    method: 'POST',
+    headers: await adminHeaders(true),
+    body: JSON.stringify({ shop_domain: shop }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Could not unlink the store')
+  return data
+}
