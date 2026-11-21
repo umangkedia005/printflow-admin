@@ -46,7 +46,7 @@ function Review({ g, onDone }) {
       await reviewGarment({
         email: g.email, garment_id: g.garment_id, decision, note,
         prices: Object.fromEntries(Object.entries(prices).map(([s, v]) => [s, Number(v)])),
-        areas: areas.map(a => ({ id: a.id, remove: a.remove, width_in: Number(a.width_in), height_in: Number(a.height_in), print_cost: Number(a.print_cost), mockup_box: { x: Number(a.mockup_box.x), y: Number(a.mockup_box.y), w: Number(a.mockup_box.w) } })),
+        areas: areas.map(a => ({ id: a.id, remove: a.remove, width_in: Number(a.width_in), height_in: Number(a.height_in), print_base: a.print_base ?? '', print_rate: a.print_rate ?? '', mockup_box: { x: Number(a.mockup_box.x), y: Number(a.mockup_box.y), w: Number(a.mockup_box.w) } })),
       })
       onDone()
     } catch (err) {
@@ -80,19 +80,19 @@ function Review({ g, onDone }) {
             </div>
             <Photo url={g.photo_urls?.[a.view_id]} box={boxOf(a)} label={`${Number(a.width_in)}″ × ${Number(a.height_in)}″`} />
             {editable && !a.remove && (
-              <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                {[['width_in', 'Width ″'], ['height_in', 'Height ″'], ['print_cost', 'Cost ₹']].map(([k, text]) => (
-                  <div key={k}><span style={{ ...label, marginBottom: '3px' }}>{text}</span><input style={{ ...input, padding: '6px 8px' }} type="number" min="0" step="0.5" value={a[k]} onChange={e => set(a.id, { [k]: e.target.value })} /></div>
+              <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {[['width_in', 'Width ″', '0.5'], ['height_in', 'Height ″', '0.5'], ['print_base', 'Base ₹ (blank = Settings)', '1'], ['print_rate', '₹/sq in (blank = Settings)', '0.01']].map(([k, text, step]) => (
+                  <div key={k}><span style={{ ...label, marginBottom: '3px' }}>{text}</span><input style={{ ...input, padding: '6px 8px' }} type="number" min="0" step={step} placeholder={k.startsWith('print_') ? 'Settings' : undefined} value={a[k] ?? ''} onChange={e => set(a.id, { [k]: e.target.value })} /></div>
                 ))}
                 {[['x', 'Left'], ['y', 'Top'], ['w', 'Box size']].map(([k, text]) => (
-                  <div key={k} style={{ gridColumn: 'span 3' }}>
+                  <div key={k} style={{ gridColumn: 'span 2' }}>
                     <span style={{ ...label, marginBottom: '0' }}>{text}</span>
                     <input type="range" min={k === 'w' ? 0.05 : 0} max={k === 'w' ? 0.9 : 0.95} step="0.005" value={a.mockup_box[k]} onChange={e => setBox(a.id, k, Number(e.target.value))} style={{ width: '100%' }} />
                   </div>
                 ))}
               </div>
             )}
-            {!editable && <div style={{ fontSize: '12px', color: C.muted, marginTop: '6px' }}>₹{Number(a.print_cost)} per piece</div>}
+            {!editable && <div style={{ fontSize: '12px', color: C.muted, marginTop: '6px' }}>Printing: {a.print_base != null || a.print_rate != null ? `₹${a.print_base ?? 'Settings'} + ₹${a.print_rate ?? 'Settings'}/sq in` : 'Settings rates'}</div>}
           </div>
         ))}
       </div>

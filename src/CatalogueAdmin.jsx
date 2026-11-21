@@ -11,10 +11,10 @@ const STANDARD_VIEWS = [
   { id: 'right-sleeve', label: 'Right sleeve' },
 ]
 const STANDARD_AREAS = {
-  'front': { id: 'front', label: 'Front', view_id: 'front', width_in: 12, height_in: 16, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.33, y: 0.25, w: 0.34 } },
-  'back': { id: 'back', label: 'Back', view_id: 'back', width_in: 12, height_in: 16, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.33, y: 0.25, w: 0.34 } },
-  'left-sleeve': { id: 'left-sleeve', label: 'Left sleeve', view_id: 'left-sleeve', width_in: 3, height_in: 4, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.45, y: 0.35, w: 0.1 } },
-  'right-sleeve': { id: 'right-sleeve', label: 'Right sleeve', view_id: 'right-sleeve', width_in: 3, height_in: 4, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.45, y: 0.35, w: 0.1 } },
+  'front': { id: 'front', label: 'Front', view_id: 'front', width_in: 12, height_in: 16, min_dpi: 150, mockup_box: { x: 0.33, y: 0.25, w: 0.34 } },
+  'back': { id: 'back', label: 'Back', view_id: 'back', width_in: 12, height_in: 16, min_dpi: 150, mockup_box: { x: 0.33, y: 0.25, w: 0.34 } },
+  'left-sleeve': { id: 'left-sleeve', label: 'Left sleeve', view_id: 'left-sleeve', width_in: 3, height_in: 4, min_dpi: 150, mockup_box: { x: 0.45, y: 0.35, w: 0.1 } },
+  'right-sleeve': { id: 'right-sleeve', label: 'Right sleeve', view_id: 'right-sleeve', width_in: 3, height_in: 4, min_dpi: 150, mockup_box: { x: 0.45, y: 0.35, w: 0.1 } },
 }
 
 const NEW_BLANK = {
@@ -594,7 +594,7 @@ function BlankEditor({ initial, isNew, existingIds, otherSkus, onSaved, onCancel
       </Section>
 
       <Section title="Print areas" hint="Drag the blue box on the photo. The orange box is the part the merchant's editor zooms into."
-        action={<button style={button} onClick={() => { update({ print_areas: [...form.print_areas, { id: `area-${form.print_areas.length + 1}`, label: 'New area', view_id: areaView, width_in: 10, height_in: 10, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.4, y: 0.3, w: 0.2 } }] }); setSelectedArea(form.print_areas.length) }}>+ Add area</button>}>
+        action={<button style={button} onClick={() => { update({ print_areas: [...form.print_areas, { id: `area-${form.print_areas.length + 1}`, label: 'New area', view_id: areaView, width_in: 10, height_in: 10, min_dpi: 150, mockup_box: { x: 0.4, y: 0.3, w: 0.2 } }] }); setSelectedArea(form.print_areas.length) }}>+ Add area</button>}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 420px) 1fr', gap: '20px', alignItems: 'start' }} className="admin-areas">
           <PrintAreaCanvas key={areaView} photoUrl={form.colors[previewColor]?.image_urls?.[areaView]} areas={form.print_areas} selected={selectedArea} viewId={areaView}
             onMove={patch => setArea(selectedArea, patch)} />
@@ -616,7 +616,8 @@ function BlankEditor({ initial, isNew, existingIds, otherSkus, onSaved, onCancel
                 <div><span style={label}>Print width (in)</span><input style={input} type="number" step="0.5" value={area.width_in} onChange={e => setArea(selectedArea, { width_in: e.target.value })} /></div>
                 <div><span style={label}>Print height (in)</span><input style={input} type="number" step="0.5" value={area.height_in} onChange={e => setArea(selectedArea, { height_in: e.target.value })} /></div>
                 <div><span style={label}>Min DPI</span><input style={input} type="number" value={area.min_dpi} onChange={e => setArea(selectedArea, { min_dpi: e.target.value })} /></div>
-                <div><span style={label}>Print cost ₹ (added per item)</span><input style={input} type="number" value={area.print_cost ?? 0} onChange={e => setArea(selectedArea, { print_cost: e.target.value })} /></div>
+                <div><span style={label}>Printing base ₹ (blank = Settings)</span><input style={input} type="number" min="0" step="1" placeholder="Settings" value={area.print_base ?? ''} onChange={e => setArea(selectedArea, { print_base: e.target.value })} /></div>
+                <div><span style={label}>₹ per sq inch (blank = Settings)</span><input style={input} type="number" min="0" step="0.01" placeholder="Settings" value={area.print_rate ?? ''} onChange={e => setArea(selectedArea, { print_rate: e.target.value })} /></div>
                 <div><span style={label}>Box width on photo (%)</span><input style={input} type="number" step="0.5" value={pct(area.mockup_box.w)} onChange={e => setArea(selectedArea, { mockup_box: { ...area.mockup_box, w: Number(e.target.value) / 100 } })} /></div>
                 <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #F1ECE1', paddingTop: '10px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 600 }}>
