@@ -176,12 +176,13 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
     e.currentTarget.setPointerCapture(e.pointerId)
     const a = areas[i]
     // Pixels on screen are smaller fractions of the photo when zoomed in.
-    drag.current = { mode, x: e.clientX, y: e.clientY, from: a.mockup_box, fromH: a.mockup_box.w * a.height_in / a.width_in, perPx: view.w / ref.current.getBoundingClientRect().width }
+    drag.current = { mode, x: e.clientX, y: e.clientY, from: a.mockup_box, fromH: a.mockup_box.w * a.height_in / a.width_in, perPx: view.w / ref.current.getBoundingClientRect().width,
+      // Inches per unit of photo width, fixed for the whole drag.
+      scale: (Number(a.width_in) || 1) / a.mockup_box.w }
   }
   function move(e) {
     const d = drag.current
     if (!d) return
-    const a = areas[selected]
     const dx = (e.clientX - d.x) * d.perPx, dy = (e.clientY - d.y) * d.perPx
     const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
     const r3 = v => Math.round(v * 1000) / 1000
@@ -191,16 +192,16 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
         y: r3(clamp(d.from.y + dy, 0, 1 - d.fromH)) } })
       return
     }
-    // Resizing: the box sets its width on the photo; its shape sets the print
-    // height (the print width in inches stays as typed).
+    // Resizing keeps the photo's scale (inches per box width, set by the
+    // typed print width), so print width and height both follow the box.
     const right = d.from.x + d.from.w, bottom = d.from.y + d.fromH
     let { x, y } = d.from, w = d.from.w, h = d.fromH
     if (d.mode.includes('e')) w = clamp(d.from.w + dx, 0.02, 1 - d.from.x)
     if (d.mode.includes('w')) { x = clamp(d.from.x + dx, 0, right - 0.02); w = right - x }
     if (d.mode.includes('s')) h = clamp(d.fromH + dy, 0.02, 1 - d.from.y)
     if (d.mode.includes('n')) { y = clamp(d.from.y + dy, 0, bottom - 0.02); h = bottom - y }
-    const widthIn = Number(a.width_in) || 1
-    onMove({ mockup_box: { ...d.from, x: r3(x), y: r3(y), w: r3(w) }, height_in: Math.round(widthIn * (h / w) * 10) / 10 })
+    const r1 = v => Math.round(v * 10) / 10
+    onMove({ mockup_box: { ...d.from, x: r3(x), y: r3(y), w: r3(w) }, width_in: r1(d.scale * w), height_in: r1(d.scale * h) })
   }
   const stop = e => { e.stopPropagation(); drag.current = null }
 
@@ -280,7 +281,7 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
         ))}
       </div>
     </div>
-      <div style={{ fontSize: '11px', color: C.muted, marginTop: '6px' }}>Drag the blue box to move it; drag any of its eight handles (edges or corners) to resize. Click the photo to zoom in on a spot; drag to look around.</div>
+      <div style={{ fontSize: '11px', color: C.muted, marginTop: '6px' }}>Drag the blue box to move it; drag any of its eight handles (edges or corners) to resize; print width and height follow at the scale set by the typed print width. Click the photo to zoom in on a spot; drag to look around.</div>
     </div>
   )
 }
