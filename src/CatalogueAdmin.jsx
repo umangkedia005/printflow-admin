@@ -166,25 +166,43 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
     setView(clampView({ w, x: c.x - w / 2, y: c.y - w / 2 }))
   }
 
-  function down(e, i) {
+  // mode: 'move' the box, or resize it from an edge or corner: right 'e',
+  // bottom 's', left 'w', top 'n', or any corner ('ne', 'nw', 'se', 'sw'). The opposite side
+  // stays where it is.
+  function down(e, i, mode = 'move') {
     if (i !== selected) return
     e.preventDefault()
     e.stopPropagation()
     e.currentTarget.setPointerCapture(e.pointerId)
+    const a = areas[i]
     // Pixels on screen are smaller fractions of the photo when zoomed in.
-    drag.current = { x: e.clientX, y: e.clientY, from: areas[i].mockup_box, perPx: view.w / ref.current.getBoundingClientRect().width }
+    drag.current = { mode, x: e.clientX, y: e.clientY, from: a.mockup_box, fromH: a.mockup_box.w * a.height_in / a.width_in, perPx: view.w / ref.current.getBoundingClientRect().width }
   }
   function move(e) {
     const d = drag.current
     if (!d) return
     const a = areas[selected]
-    const h = d.from.w * a.height_in / a.width_in
-    const clamp = (v, max) => Math.min(Math.max(v, 0), max)
-    onMove({
-      x: Math.round(clamp(d.from.x + (e.clientX - d.x) * d.perPx, 1 - d.from.w) * 1000) / 1000,
-      y: Math.round(clamp(d.from.y + (e.clientY - d.y) * d.perPx, 1 - h) * 1000) / 1000,
-    })
+    const dx = (e.clientX - d.x) * d.perPx, dy = (e.clientY - d.y) * d.perPx
+    const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
+    const r3 = v => Math.round(v * 1000) / 1000
+    if (d.mode === 'move') {
+      onMove({ mockup_box: { ...d.from,
+        x: r3(clamp(d.from.x + dx, 0, 1 - d.from.w)),
+        y: r3(clamp(d.from.y + dy, 0, 1 - d.fromH)) } })
+      return
+    }
+    // Resizing: the box sets its width on the photo; its shape sets the print
+    // height (the print width in inches stays as typed).
+    const right = d.from.x + d.from.w, bottom = d.from.y + d.fromH
+    let { x, y } = d.from, w = d.from.w, h = d.fromH
+    if (d.mode.includes('e')) w = clamp(d.from.w + dx, 0.02, 1 - d.from.x)
+    if (d.mode.includes('w')) { x = clamp(d.from.x + dx, 0, right - 0.02); w = right - x }
+    if (d.mode.includes('s')) h = clamp(d.fromH + dy, 0.02, 1 - d.from.y)
+    if (d.mode.includes('n')) { y = clamp(d.from.y + dy, 0, bottom - 0.02); h = bottom - y }
+    const widthIn = Number(a.width_in) || 1
+    onMove({ mockup_box: { ...d.from, x: r3(x), y: r3(y), w: r3(w) }, height_in: Math.round(widthIn * (h / w) * 10) / 10 })
   }
+  const stop = e => { e.stopPropagation(); drag.current = null }
 
   function photoDown(e) {
     if (e.button !== 0) return
@@ -214,6 +232,7 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
   const ease = panning ? 'none' : 'all 0.28s ease'
 
   return (
+    <div>
     <div style={{ position: 'relative' }}>
       <div ref={ref}
         onPointerDown={photoDown} onPointerMove={photoMove} onPointerUp={photoUp}
@@ -233,9 +252,23 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
                 <div style={{ position: 'absolute', ...place(a.zoom.x, a.zoom.y, a.zoom.w, a.zoom.w), border: '1.5px dashed #F59E0B', pointerEvents: 'none', transition: ease }} />
               )}
               <div
-                onPointerDown={e => down(e, i)} onPointerMove={move} onPointerUp={e => { e.stopPropagation(); drag.current = null }}
-                style={{ position: 'absolute', ...place(b.x, b.y, b.w, h), border: `2px ${on ? 'solid' : 'dashed'} ${on ? '#2563EB' : 'rgba(37,99,235,0.45)'}`, background: on ? 'rgba(37,99,235,0.12)' : 'transparent', cursor: on ? 'move' : 'inherit', touchAction: 'none', fontSize: '10px', fontWeight: 700, color: '#1D4ED8', padding: '2px 4px', boxSizing: 'border-box', overflow: 'hidden', transition: drag.current ? 'none' : ease, pointerEvents: on ? 'auto' : 'none' }}>
-                {a.label}
+                onPointerDown={e => down(e, i)} onPointerMove={move} onPointerUp={stop}
+                style={{ position: 'absolute', ...place(b.x, b.y, b.w, h), border: `2px ${on ? 'solid' : 'dashed'} ${on ? '#2563EB' : 'rgba(37,99,235,0.45)'}`, background: on ? 'rgba(37,99,235,0.12)' : 'transparent', cursor: on ? 'move' : 'inherit', touchAction: 'none', fontSize: '10px', fontWeight: 700, color: '#1D4ED8', padding: '2px 4px', boxSizing: 'border-box', transition: drag.current ? 'none' : ease, pointerEvents: on ? 'auto' : 'none' }}>
+                <span style={{ display: 'block', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', paddingLeft: on ? '6px' : 0 }}>{a.label}</span>
+                {/* Resize handles: edges change width or height, corners both. */}
+                {on && [
+                  ['n', { top: '-7px', left: 'calc(50% - 7px)', cursor: 'ns-resize' }, 'Drag to change height'],
+                  ['s', { bottom: '-7px', left: 'calc(50% - 7px)', cursor: 'ns-resize' }, 'Drag to change height'],
+                  ['w', { left: '-7px', top: 'calc(50% - 7px)', cursor: 'ew-resize' }, 'Drag to change width'],
+                  ['e', { right: '-7px', top: 'calc(50% - 7px)', cursor: 'ew-resize' }, 'Drag to change width'],
+                  ['nw', { left: '-7px', top: '-7px', cursor: 'nwse-resize' }, 'Drag to resize'],
+                  ['se', { right: '-7px', bottom: '-7px', cursor: 'nwse-resize' }, 'Drag to resize'],
+                  ['ne', { right: '-7px', top: '-7px', cursor: 'nesw-resize' }, 'Drag to resize'],
+                  ['sw', { left: '-7px', bottom: '-7px', cursor: 'nesw-resize' }, 'Drag to resize'],
+                ].map(([mode, pos, title]) => (
+                  <span key={mode} title={title} onPointerDown={e => down(e, i, mode)} onPointerMove={move} onPointerUp={stop}
+                    style={{ position: 'absolute', ...pos, width: '12px', height: '12px', background: '#FFFFFF', border: '2px solid #2563EB', borderRadius: mode.length === 2 ? '3px' : '50%', touchAction: 'none', boxSizing: 'border-box', zIndex: 2 }} />
+                ))}
               </div>
             </div>
           )
@@ -246,7 +279,8 @@ function PrintAreaCanvas({ photoUrl, areas, selected, viewId, onMove }) {
           <button key={title} title={title} aria-label={title} onClick={fn} style={{ width: '28px', height: '28px', border: 'none', background: 'transparent', borderRadius: '99px', fontSize: '15px', color: C.ink, cursor: 'pointer' }}>{sym}</button>
         ))}
       </div>
-      <div style={{ fontSize: '11px', color: C.muted, marginTop: '6px' }}>Click the photo to zoom in on a spot; drag to look around.</div>
+    </div>
+      <div style={{ fontSize: '11px', color: C.muted, marginTop: '6px' }}>Drag the blue box to move it; drag any of its eight handles (edges or corners) to resize. Click the photo to zoom in on a spot; drag to look around.</div>
     </div>
   )
 }
@@ -563,7 +597,7 @@ function BlankEditor({ initial, isNew, existingIds, otherSkus, onSaved, onCancel
         action={<button style={button} onClick={() => { update({ print_areas: [...form.print_areas, { id: `area-${form.print_areas.length + 1}`, label: 'New area', view_id: areaView, width_in: 10, height_in: 10, min_dpi: 150, print_cost: 0, mockup_box: { x: 0.4, y: 0.3, w: 0.2 } }] }); setSelectedArea(form.print_areas.length) }}>+ Add area</button>}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 420px) 1fr', gap: '20px', alignItems: 'start' }} className="admin-areas">
           <PrintAreaCanvas key={areaView} photoUrl={form.colors[previewColor]?.image_urls?.[areaView]} areas={form.print_areas} selected={selectedArea} viewId={areaView}
-            onMove={pos => setArea(selectedArea, { mockup_box: { ...area.mockup_box, ...pos } })} />
+            onMove={patch => setArea(selectedArea, patch)} />
           <div>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
               {form.print_areas.map((a, i) => (
