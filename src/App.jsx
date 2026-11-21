@@ -13,7 +13,7 @@ import PrintSheet from './PrintSheet'
 import ShipDialog from './ShipDialog'
 
 const provider = new GoogleAuthProvider()
-import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore } from './api'
+import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore, openInvoice } from './api'
 
 const ALLOWED_EMAILS = [
   'umangkedia5@gmail.com',
@@ -38,6 +38,13 @@ function customerName(order) {
   const ship = raw.shipping_address || raw.billing_address || {}
   const cust = raw.customer || {}
   return ship.name || [cust.first_name, cust.last_name].filter(Boolean).join(' ') || order.email || 'Guest'
+}
+
+// Bill to = the brand that placed the order (our customer);
+// ship to = the person the parcel goes to (the brand's customer).
+function shipTo(order) {
+  const a = (order.raw || {}).shipping_address || {}
+  return [a.city || a.province, a.zip || a.pincode].filter(Boolean).join(' ')
 }
 
 function money(amount, currency) {
@@ -286,7 +293,7 @@ function AdminDashboard({ user }) {
   const filteredOrders = orders
     .filter(o => {
       const matchStatus = filterStatus === 'all' || stageOf(o) === filterStatus
-      const matchSearch = !q || [o.order_name, o.shop_domain, o.account_email, o.email, customerName(o)].some(v => (v || '').toLowerCase().includes(q))
+      const matchSearch = !q || [o.order_name, o.shop_domain, o.account_email, o.email, customerName(o), o.bill_to?.name, o.bill_to?.email].some(v => (v || '').toLowerCase().includes(q))
       return matchStatus && matchSearch
     })
     .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
@@ -384,9 +391,9 @@ function AdminDashboard({ user }) {
                 <div style={empty}>{orders.length ? 'No orders match.' : 'No orders yet.'}</div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1040px' }}>
                     <thead>
-                      <tr>{['', 'Order', 'Customer', 'Print files', 'Amount', 'Status', 'Placed', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
+                      <tr>{['', 'Order', 'Bill to (brand)', 'Ship to', 'Print files', 'Amount', 'Status', 'Placed', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
                     </thead>
                     <tbody>
                       {filteredOrders.map((o, i) => {
@@ -405,8 +412,14 @@ function AdminDashboard({ user }) {
                               </div>
                             </td>
                             <td style={td}>
+                              <div style={{ fontWeight: 500 }}>{o.bill_to?.name || o.bill_to?.email || (o.shop_domain || '').replace('.myshopify.com', '') || '—'}</div>
+                              <div style={{ fontSize: '12px', color: C.muted }}>{o.bill_to?.name ? o.bill_to.email : (o.source === 'manual' ? '' : (o.shop_domain || '').replace('.myshopify.com', ''))}</div>
+                              {o.bill_to?.gstin && <div style={{ fontSize: '11px', color: C.faint }}>GSTIN {o.bill_to.gstin}</div>}
+                              {o.bill_to?.email && !o.bill_to?.name && <div style={{ fontSize: '11px', color: C.gold }}>No billing details yet</div>}
+                            </td>
+                            <td style={td}>
                               <div style={{ fontWeight: 500 }}>{customerName(o)}</div>
-                              <div style={{ fontSize: '12px', color: C.muted }}>{o.account_email || (o.shop_domain || '').replace('.myshopify.com', '')}</div>
+                              <div style={{ fontSize: '12px', color: C.muted }}>{shipTo(o)}</div>
                             </td>
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>{money(o.total_price, o.currency)}</td>
@@ -417,6 +430,12 @@ function AdminDashboard({ user }) {
                                 <button onClick={() => handleStatusChange(o, next)} disabled={busy}
                                   style={{ ...(stage === 'queued' ? outline : primary), padding: '7px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                   {busy ? 'Saving…' : ACTION_LABEL[next]}
+                                </button>
+                              )}
+                              {(o.source === 'manual' || o.print_charges) && (
+                                <button onClick={() => openInvoice('order', o.order_id).catch(e => alert(e.message))} title={o.invoice?.number || 'Tax invoice'}
+                                  style={{ display: 'block', marginLeft: 'auto', marginTop: '6px', background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                  Download invoice
                                 </button>
                               )}
                             </td>
