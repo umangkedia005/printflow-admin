@@ -160,6 +160,7 @@ export default function PrintSheet({ order, onClose }) {
         <div style={{ padding: '22px 26px', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
           <div>
             <div style={{ fontFamily: SERIF, fontSize: '22px', color: C.ink }}>Print details · {(order.order_name || order.order_id).replace('#', '')}</div>
+            {order.sample && <div style={{ display: 'inline-block', marginTop: '6px', fontSize: '11px', fontWeight: 700, color: C.blue, background: C.blueWash, padding: '3px 10px', borderRadius: '99px' }}>SAMPLE: the customer is checking quality, inspect it before shipping</div>}
             <div style={{ fontSize: '12px', color: C.muted, marginTop: '4px' }}>Positions are measured from the top-left corner of each print area.</div>
           </div>
           <button onClick={onClose} style={{ ...button, padding: '6px 12px' }}>Close</button>

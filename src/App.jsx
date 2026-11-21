@@ -3,6 +3,7 @@ import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from
 import { auth } from './firebase'
 import CatalogueAdmin from './CatalogueAdmin'
 import SettingsAdmin from './SettingsAdmin'
+import StockAdmin from './StockAdmin'
 import GarmentsAdmin from './GarmentsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
@@ -311,6 +312,7 @@ function AdminDashboard({ user }) {
     { id: 'stores', label: 'Stores' },
     { id: 'products', label: 'Products' },
     { id: 'catalogue', label: 'Catalogue' },
+    { id: 'stock', label: 'Stock' },
     { id: 'garments', label: 'Garments' },
     { id: 'settings', label: 'Settings' },
   ]
@@ -394,6 +396,7 @@ function AdminDashboard({ user }) {
                               <div style={{ fontFamily: SERIF, fontSize: '17px' }}>{(o.order_name || `#${o.order_id}`).replace('#', '')}</div>
                               <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '2px' }}>
                                 <span style={{ fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: o.source === 'manual' ? C.gold : C.muted, background: o.source === 'manual' ? C.goldWash : C.wash, padding: '1px 7px', borderRadius: '99px' }}>{o.source === 'manual' ? 'Manual' : 'Shopify'}</span>
+                                {o.sample && <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.blue, background: C.blueWash, padding: '1px 7px', borderRadius: '99px', marginLeft: '4px' }}>Sample</span>}
                                 {o.reference && <span style={{ fontSize: '11px', color: C.faint }}>Ref {o.reference}</span>}
                               </div>
                             </td>
@@ -498,6 +501,7 @@ function AdminDashboard({ user }) {
         )}
 
         {activeTab === 'catalogue' && <CatalogueAdmin />}
+        {activeTab === 'stock' && <StockAdmin />}
         {activeTab === 'garments' && <GarmentsAdmin />}
         {activeTab === 'settings' && <SettingsAdmin />}
       </main>

@@ -10,6 +10,7 @@ const FIELDS = [
   ['air_extra', 'Air: each extra item ₹'],
   ['product_tax_pct', 'GST on products %'],
   ['shipping_tax_pct', 'GST on shipping %'],
+  ['sample_discount_pct', 'Sample discount % (Book a Sample)'],
 ]
 
 // Charges for orders merchants create themselves (Orders → Create order).

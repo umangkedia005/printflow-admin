@@ -107,6 +107,18 @@ export async function uploadBlankPhoto(blankId, photo) {
   return data.key
 }
 
+// Pieces on hand per colour / size; '' = not counted.
+export async function saveStock(blankId, stock) {
+  const res = await fetch(`${BASE_URL}/admin/stock`, {
+    method: 'POST',
+    headers: await adminHeaders(true),
+    body: JSON.stringify({ blank_id: blankId, stock }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to save stock')
+  return data
+}
+
 export async function fetchSettings() {
   const res = await fetch(`${BASE_URL}/admin/settings`, { headers: await adminHeaders() })
   const data = await res.json()
