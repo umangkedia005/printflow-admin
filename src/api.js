@@ -133,6 +133,24 @@ export const saveBrandingCatalog = products => adminCall('/admin/branding/catalo
 export const reviewBrandingOrder = (email, orderId, status, reason) => adminCall('/admin/branding/review', { email, order_id: orderId, status, reason })
 export const setBrandingStock = (email, product, left) => adminCall('/admin/branding/stock', { email, product, left })
 
+// Invoices: the business details printed on every invoice, and opening one.
+export const fetchInvoiceSettings = () => adminCall('/admin/invoice-settings')
+export const saveInvoiceSettings = values => adminCall('/admin/invoice-settings', values)
+export const fetchAdminInvoice = (kind, id) => adminCall(`/admin/invoice?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`)
+
+// Opens an invoice in a new tab (opened before the request, so pop-up
+// blockers allow it); its button prints or saves it as a PDF.
+export async function openInvoice(kind, id) {
+  const win = window.open('', '_blank')
+  try {
+    const { html } = await fetchAdminInvoice(kind, id)
+    win.document.open(); win.document.write(html); win.document.close()
+  } catch (e) {
+    win.close()
+    throw e
+  }
+}
+
 export async function fetchSettings() {
   const res = await fetch(`${BASE_URL}/admin/settings`, { headers: await adminHeaders() })
   const data = await res.json()

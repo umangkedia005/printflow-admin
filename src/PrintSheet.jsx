@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { C, SERIF, SANS, button } from './theme'
+import { openInvoice } from './api'
 
 const inch = n => `${Number(n).toFixed(1)}″`
 const pct = n => `${n * 100}%`
@@ -160,6 +161,7 @@ export default function PrintSheet({ order, onClose }) {
         <div style={{ padding: '22px 26px', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
           <div>
             <div style={{ fontFamily: SERIF, fontSize: '22px', color: C.ink }}>Print details · {(order.order_name || order.order_id).replace('#', '')}</div>
+            {(order.source === 'manual' || order.print_charges) && <InvoiceLink order={order} />}
             {order.branding && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                 {order.branding.hang_tag && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Attach the brand's hang tag to every piece</span>}
@@ -220,5 +222,17 @@ export default function PrintSheet({ order, onClose }) {
       </div>
     </div>,
     document.body,
+  )
+}
+
+function InvoiceLink({ order }) {
+  const [msg, setMsg] = useState('')
+  return (
+    <div style={{ marginTop: '6px', fontSize: '12px' }}>
+      <button onClick={() => { setMsg(''); openInvoice('order', order.order_id).catch(e => setMsg(e.message)) }} style={{ background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', fontFamily: SANS }}>
+        Download invoice{order.invoice?.number ? ` (${order.invoice.number})` : ''}
+      </button>
+      {msg && <span style={{ color: C.red, marginLeft: '8px' }}>{msg}</span>}
+    </div>
   )
 }

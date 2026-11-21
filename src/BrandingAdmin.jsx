@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchBrandingAdmin, saveBrandingCatalog, reviewBrandingOrder, setBrandingStock } from './api'
+import { fetchBrandingAdmin, saveBrandingCatalog, reviewBrandingOrder, setBrandingStock, openInvoice } from './api'
 import { C, SERIF, panel, input, label, button, primary, outline } from './theme'
 import Heading from './Heading'
 
@@ -45,6 +45,7 @@ function OrderCard({ o, onChanged }) {
         <div>{o.email} · {o.order_id} · paid {rupees(o.price)} · {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         {o.notes && <div style={{ color: C.muted }}>Notes: {o.notes}</div>}
         {o.reason && <div style={{ color: C.red }}>Reason: {o.reason}</div>}
+        {(o.status === 'production' || o.status === 'ready') && <button onClick={() => openInvoice('branding', o.order_id).catch(e => setErr(e.message))} style={{ background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px' }}>Download invoice{o.invoice?.number ? ` (${o.invoice.number})` : ''}</button>}
         {err && <div style={{ color: C.red }}>{err}</div>}
         {rejecting && (
           <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
