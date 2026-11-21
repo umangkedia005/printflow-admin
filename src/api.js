@@ -119,6 +119,20 @@ export async function saveStock(blankId, stock) {
   return data
 }
 
+// Branding (hang tags, courier bags): prices, artwork review, brand stock.
+async function adminCall(path, body) {
+  const res = await fetch(`${BASE_URL}${path}`, body === undefined
+    ? { headers: await adminHeaders() }
+    : { method: 'POST', headers: await adminHeaders(true), body: JSON.stringify(body) })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Request failed')
+  return data
+}
+export const fetchBrandingAdmin = () => adminCall('/admin/branding')
+export const saveBrandingCatalog = products => adminCall('/admin/branding/catalog', { products })
+export const reviewBrandingOrder = (email, orderId, status, reason) => adminCall('/admin/branding/review', { email, order_id: orderId, status, reason })
+export const setBrandingStock = (email, product, left) => adminCall('/admin/branding/stock', { email, product, left })
+
 export async function fetchSettings() {
   const res = await fetch(`${BASE_URL}/admin/settings`, { headers: await adminHeaders() })
   const data = await res.json()

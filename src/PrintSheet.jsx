@@ -160,6 +160,12 @@ export default function PrintSheet({ order, onClose }) {
         <div style={{ padding: '22px 26px', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
           <div>
             <div style={{ fontFamily: SERIF, fontSize: '22px', color: C.ink }}>Print details · {(order.order_name || order.order_id).replace('#', '')}</div>
+            {order.branding && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                {order.branding.hang_tag && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Attach the brand's hang tag to every piece</span>}
+                {order.branding.poly_bag && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Pack in the brand's courier bag</span>}
+              </div>
+            )}
             {order.sample && <div style={{ display: 'inline-block', marginTop: '6px', fontSize: '11px', fontWeight: 700, color: C.blue, background: C.blueWash, padding: '3px 10px', borderRadius: '99px' }}>SAMPLE: the customer is checking quality, inspect it before shipping</div>}
             <div style={{ fontSize: '12px', color: C.muted, marginTop: '4px' }}>Positions are measured from the top-left corner of each print area.</div>
           </div>
