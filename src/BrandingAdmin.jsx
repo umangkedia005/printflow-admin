@@ -14,7 +14,7 @@ const STATUS = {
   ready: ['Ready · in stock', C.greenWash, C.green],
   rejected: ['Rejected · refunded', C.redWash, C.red],
 }
-const PRODUCTS = [['hang_tag', 'Hang tags'], ['poly_bag', 'Custom courier bags']]
+const PRODUCTS = [['hang_tag', 'Hang tags'], ['poly_bag', 'Custom courier bags'], ['thank_you_card', 'Thank you cards']]
 const rupees = n => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
 
 function OrderCard({ o, onChanged }) {
@@ -85,13 +85,13 @@ function Prices({ catalog, onSaved }) {
         <div key={pid} style={{ ...panel, padding: '18px 22px' }}>
           <div style={{ fontFamily: SERIF, fontSize: '19px', color: C.ink, marginBottom: '10px' }}>{name}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: '10px', marginBottom: '12px' }}>
-            <div><span style={label}>DESCRIPTION (shown to brands)</span><input style={input} value={form[pid].description} maxLength={300} onChange={e => set(pid, p => ({ ...p, description: e.target.value }))} placeholder={pid === 'hang_tag' ? 'e.g. 350 GSM matte card, printed both sides, with string' : 'e.g. 60 micron, tamper-proof seal, printed one side'} /></div>
+            <div><span style={label}>DESCRIPTION (shown to brands)</span><input style={input} value={form[pid].description} maxLength={300} onChange={e => set(pid, p => ({ ...p, description: e.target.value }))} placeholder={{ hang_tag: 'e.g. 350 GSM matte card, printed both sides, with string', poly_bag: 'e.g. 60 micron, tamper-proof seal, printed one side', thank_you_card: 'e.g. 350 GSM card, printed one side' }[pid]} /></div>
             <div><span style={label}>MADE IN (DAYS)</span><input style={input} type="number" min="1" max="60" value={form[pid].lead_days} onChange={e => set(pid, p => ({ ...p, lead_days: e.target.value }))} /></div>
           </div>
           {form[pid].sizes.map((s, si) => (
             <div key={si} style={{ border: `1px solid ${C.ruleSoft}`, borderRadius: '10px', padding: '12px', marginBottom: '10px' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', marginBottom: '8px' }}>
-                <div style={{ flex: 1 }}><span style={label}>SIZE</span><input style={input} value={s.label} onChange={e => set(pid, p => { p.sizes[si].label = e.target.value; return p })} placeholder={pid === 'hang_tag' ? '2 x 3.5 in' : '10 x 12 in'} /></div>
+                <div style={{ flex: 1 }}><span style={label}>SIZE</span><input style={input} value={s.label} onChange={e => set(pid, p => { p.sizes[si].label = e.target.value; return p })} placeholder={{ hang_tag: '2 x 3.5 in', poly_bag: '10 x 12 in', thank_you_card: 'A6 (4.1 x 5.8 in)' }[pid]} /></div>
                 <button style={button} onClick={() => set(pid, p => { p.sizes.splice(si, 1); return p })}>Remove size</button>
               </div>
               {s.tiers.map((t, ti) => (
@@ -118,7 +118,7 @@ function Prices({ catalog, onSaved }) {
 }
 
 function StockRow({ row, onSaved }) {
-  const [vals, setVals] = useState({ hang_tag: String(row.hang_tag.left), poly_bag: String(row.poly_bag.left) })
+  const [vals, setVals] = useState(Object.fromEntries(PRODUCTS.map(([pid]) => [pid, String(row[pid]?.left ?? 0)])))
   const [msg, setMsg] = useState('')
   async function save(pid) {
     setMsg('')
@@ -131,8 +131,8 @@ function StockRow({ row, onSaved }) {
         <td key={pid} style={{ padding: '8px 10px' }}>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <input style={{ ...input, width: '100px' }} type="number" min="0" value={vals[pid]} onChange={e => setVals(v => ({ ...v, [pid]: e.target.value }))} />
-            {vals[pid] !== String(row[pid].left) && <button style={{ ...button, padding: '6px 10px', fontSize: '12px' }} onClick={() => save(pid)}>Save</button>}
-            <span style={{ fontSize: '11px', color: row[pid].use_on_orders ? C.green : C.muted }}>{row[pid].use_on_orders ? 'used on orders' : 'off'}</span>
+            {vals[pid] !== String(row[pid]?.left ?? 0) && <button style={{ ...button, padding: '6px 10px', fontSize: '12px' }} onClick={() => save(pid)}>Save</button>}
+            <span style={{ fontSize: '11px', color: row[pid]?.use_on_orders ? C.green : C.muted }}>{row[pid]?.use_on_orders ? 'used on orders' : 'off'}</span>
           </div>
         </td>
       ))}
@@ -153,7 +153,7 @@ export default function BrandingAdmin() {
 
   return (
     <div>
-      <Heading eyebrow="Hang tags & courier bags" title="Branding">
+      <Heading eyebrow="Hang tags, courier bags & thank you cards" title="Branding">
         <button style={button} onClick={load}>Refresh</button>
       </Heading>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -174,7 +174,7 @@ export default function BrandingAdmin() {
           <p style={{ fontSize: '12.5px', color: C.inkSoft, marginTop: 0 }}>Pieces each brand has left with you. Ready orders add to this; update it as you use them. At 0, "use on orders" switches off.</p>
           {data.stock.length ? (
             <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-              <thead><tr>{['Brand', 'Hang tags left', 'Courier bags left', ''].map(h => <th key={h} style={{ textAlign: 'left', padding: '6px 10px', fontSize: '11px', color: C.muted, fontWeight: 600 }}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Brand', 'Hang tags left', 'Courier bags left', 'Thank you cards left', ''].map(h => <th key={h} style={{ textAlign: 'left', padding: '6px 10px', fontSize: '11px', color: C.muted, fontWeight: 600 }}>{h}</th>)}</tr></thead>
               <tbody>{data.stock.map(r => <StockRow key={r.email} row={r} onSaved={res => setData(d => ({ ...d, stock: d.stock.map(x => (x.email === res.email ? res : x)) }))} />)}</tbody>
             </table>
           ) : <div style={{ color: C.muted, fontSize: '13px' }}>No brand has branding stock yet.</div>}

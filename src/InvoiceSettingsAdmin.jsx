@@ -127,7 +127,7 @@ export default function InvoiceSettingsAdmin() {
               <input style={input} value={form.hsn?.[k]?.code || ''} onChange={e => set({ hsn: { ...form.hsn, [k]: { code: e.target.value.replace(/\D/g, '').slice(0, 8) } } })} />
             </div>
           ))}
-          {[['hang_tag', 'HANG TAGS · GST %'], ['poly_bag', 'COURIER BAGS · GST %']].map(([k, text]) => (
+          {[['hang_tag', 'HANG TAGS · GST %'], ['poly_bag', 'COURIER BAGS · GST %'], ['thank_you_card', 'THANK YOU CARDS · GST %']].map(([k, text]) => (
             <div key={k}>
               <span style={label}>{text}</span>
               <select style={input} value={String(form.branding_gst?.[k] ?? 18)} onChange={e => set({ branding_gst: { ...form.branding_gst, [k]: Number(e.target.value) } })}>

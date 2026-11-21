@@ -165,6 +165,7 @@ export default function PrintSheet({ order, onClose }) {
             {order.branding && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                 {order.branding.hang_tag && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Attach the brand's hang tag to every piece</span>}
+                {order.branding.thank_you_card && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Put the brand's thank you card in the parcel</span>}
                 {order.branding.poly_bag && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Pack in the brand's courier bag</span>}
               </div>
             )}
