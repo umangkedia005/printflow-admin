@@ -103,12 +103,33 @@ function ShipTo({ order }) {
         {lines.map((l, i) => <div key={i} style={i === 0 ? { fontWeight: 600, color: C.ink } : undefined}>{l}</div>)}
         {phone && <div>Phone: {phone}</div>}
         {order.email && <div style={{ color: C.muted }}>{order.email}</div>}
+        <ShipFrom from={order.ship_from} />
       </div>
       <div style={{ textAlign: 'right', fontSize: '12px', color: C.inkSoft, lineHeight: 1.7, flexShrink: 0 }}>
         {method && <div><span style={{ color: C.muted }}>Shipping</span> <strong style={{ color: C.ink, textTransform: 'capitalize' }}>{method}</strong></div>}
         {order.reference && <div><span style={{ color: C.muted }}>Ref</span> {order.reference}</div>}
         <button onClick={copy} style={{ ...button, padding: '5px 12px', fontSize: '12px', marginTop: '6px' }}>{copied ? 'Copied ✓' : 'Copy address'}</button>
       </div>
+    </div>
+  )
+}
+
+// The merchant's Shipping Preferences, copied onto the order when it was
+// placed: the sender name for the label and where returns should go.
+function ShipFrom({ from }) {
+  if (!from || (!from.brand_name && !from.return_address)) return null
+  const r = from.return_address
+  return (
+    <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: `1px dashed ${C.rule}` }}>
+      {from.brand_name && (
+        <div><span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.gold }}>Sender on label</span> <strong style={{ color: C.ink }}>{from.brand_name}</strong></div>
+      )}
+      {r && (
+        <div style={{ marginTop: '4px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.gold }}>Return to</span>{' '}
+          {[r.name, r.address1, r.address2, [r.city, r.state, r.pincode].filter(Boolean).join(', '), r.phone && `Phone: ${r.phone}`].filter(Boolean).join(' · ')}
+        </div>
+      )}
     </div>
   )
 }

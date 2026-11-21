@@ -129,6 +129,27 @@ function GarmentCosts() {
 // Add money to any account's wallet: test credit for Shopify's reviewers,
 // refunds, goodwill. The customer sees it in their wallet history and gets
 // a receipt email.
+// What the customer saved under Settings (billing, bank, shipping).
+function AccountDetails({ account }) {
+  const b = account.billing || {}, bank = account.bank || {}, s = account.shipping || {}
+  const addr = a => [a.address1, a.address2, [a.city, a.state, a.pincode].filter(Boolean).join(', ')].filter(Boolean).join(', ')
+  const rows = [
+    b.business_name && ['Business', [b.business_name, b.gstin && `GSTIN ${b.gstin}`].filter(Boolean).join(' · ')],
+    b.address1 && ['Billing address', addr(b)],
+    (b.email || b.phone) && ['Billing contact', [b.email, b.phone].filter(Boolean).join(' · ')],
+    bank.account_number && ['Bank account', `${bank.account_holder} · ${bank.account_number} · IFSC ${bank.ifsc}${bank.bank_name ? ` · ${bank.bank_name}` : ''}`],
+    s.brand_name && ['Sender on parcels', s.brand_name],
+    s.return_address && ['Return address', `${s.return_address.name} · ${addr(s.return_address)} · ${s.return_address.phone}`],
+    s.default_method && ['Default shipping', s.default_method],
+  ].filter(Boolean)
+  if (!rows.length) return <div style={{ color: C.muted, marginTop: '6px' }}>No billing, bank or shipping details saved yet.</div>
+  return (
+    <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: '14px', rowGap: '3px' }}>
+      {rows.map(([k, v]) => [<span key={k + 'k'} style={{ color: C.muted }}>{k}</span>, <span key={k + 'v'} style={{ color: C.ink, wordBreak: 'break-word' }}>{v}</span>])}
+    </div>
+  )
+}
+
 function WalletCredit() {
   const [email, setEmail] = useState('')
   const [account, setAccount] = useState(null)
@@ -170,6 +191,7 @@ function WalletCredit() {
             Balance <strong style={{ color: C.ink }}>₹{Number(account.balance)}</strong>
             {account.has_wallet === false && <span style={{ color: C.muted }}> · no wallet yet (it's created with the first credit)</span>}
             {account.stores?.length > 0 && <div style={{ color: C.muted }}>Linked stores: {account.stores.join(', ')}</div>}
+            <AccountDetails account={account} />
           </div>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto', gap: '10px', alignItems: 'end', marginTop: '16px', maxWidth: '720px' }}>
