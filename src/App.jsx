@@ -6,6 +6,7 @@ import SettingsAdmin from './SettingsAdmin'
 import StockAdmin from './StockAdmin'
 import BrandingAdmin from './BrandingAdmin'
 import InvoiceSettingsAdmin from './InvoiceSettingsAdmin'
+import EnquiriesAdmin from './EnquiriesAdmin'
 import GarmentsAdmin from './GarmentsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
@@ -323,6 +324,7 @@ function AdminDashboard({ user }) {
     { id: 'catalogue', label: 'Catalogue' },
     { id: 'stock', label: 'Stock' },
     { id: 'branding', label: 'Branding' },
+    { id: 'enquiries', label: 'Enquiries' },
     { id: 'invoices', label: 'Invoices' },
     { id: 'garments', label: 'Garments' },
     { id: 'settings', label: 'Settings' },
@@ -526,6 +528,7 @@ function AdminDashboard({ user }) {
         {activeTab === 'catalogue' && <CatalogueAdmin />}
         {activeTab === 'stock' && <StockAdmin />}
         {activeTab === 'branding' && <BrandingAdmin />}
+        {activeTab === 'enquiries' && <EnquiriesAdmin />}
         {activeTab === 'invoices' && <InvoiceSettingsAdmin />}
         {activeTab === 'garments' && <GarmentsAdmin />}
         {activeTab === 'settings' && <SettingsAdmin />}

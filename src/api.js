@@ -136,6 +136,9 @@ export const setBrandingStock = (email, product, left) => adminCall('/admin/bran
 // Invoices: the business details printed on every invoice, and opening one.
 export const fetchInvoiceSettings = () => adminCall('/admin/invoice-settings')
 export const saveInvoiceSettings = values => adminCall('/admin/invoice-settings', values)
+// Enquiries from the dashboard's Bulk & Custom page.
+export const fetchEnquiries = () => adminCall('/admin/enquiries')
+export const updateEnquiry = (enquiryId, status, note) => adminCall('/admin/enquiries/update', { enquiry_id: enquiryId, status, note })
 export const fetchAdminInvoice = (kind, id) => adminCall(`/admin/invoice?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`)
 
 // Opens an invoice in a new tab (opened before the request, so pop-up
