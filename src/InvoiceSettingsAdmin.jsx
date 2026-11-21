@@ -136,7 +136,7 @@ export default function InvoiceSettingsAdmin() {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: '11.5px', color: C.muted, marginTop: '8px' }}>Branding prices you set are treated as GST-inclusive. Check the codes and rates with your CA.</div>
+        <div style={{ fontSize: '11.5px', color: C.muted, marginTop: '8px' }}>Branding prices you set are plus GST: brands pay the price + this GST %. Check the codes and rates with your CA.</div>
       </Section>
 
       <Section title="Payment details" hint="Bank accounts and UPI printed at the bottom left.">

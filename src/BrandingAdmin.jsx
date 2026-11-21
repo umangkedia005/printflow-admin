@@ -42,7 +42,10 @@ function OrderCard({ o, onChanged }) {
           <span style={{ fontFamily: SERIF, fontSize: '17px', color: C.ink }}>{o.product_name} · {o.size_label} × {Number(o.qty).toLocaleString('en-IN')}</span>
           <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 9px', borderRadius: '99px', background: bg, color: fg }}>{label_}</span>
         </div>
-        <div>{o.email} · {o.order_id} · paid {rupees(o.price)} · {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+        <div>{o.email} · {o.order_id} · paid {rupees(o.total ?? o.price)}{o.gst != null ? ` (incl. GST ${rupees(o.gst)})` : ''} · {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+        {o.design?.mode === 'template'
+          ? <div style={{ color: C.blue }}>Made from template: {o.design.style} style · “{o.design.brand_name}”{o.design.headline ? ` · “${o.design.headline}”` : ''}{o.design.tagline ? ` · “${o.design.tagline}”` : ''}{o.design.handle ? ` · ${o.design.handle}` : ''}{o.design.has_logo ? ' · with logo' : ''}</div>
+          : <div style={{ color: C.muted }}>Brand's own artwork</div>}
         {o.notes && <div style={{ color: C.muted }}>Notes: {o.notes}</div>}
         {o.reason && <div style={{ color: C.red }}>Reason: {o.reason}</div>}
         {(o.status === 'production' || o.status === 'ready') && <button onClick={() => openInvoice('branding', o.order_id).catch(e => setErr(e.message))} style={{ background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px' }}>Download invoice{o.invoice?.number ? ` (${o.invoice.number})` : ''}</button>}
@@ -67,7 +70,7 @@ function OrderCard({ o, onChanged }) {
 
 function Prices({ catalog, onSaved }) {
   const start = () => Object.fromEntries(PRODUCTS.map(([pid]) => [pid, {
-    description: catalog[pid]?.description || '', lead_days: catalog[pid]?.lead_days || 8,
+    description: catalog[pid]?.description || '', lead_min: catalog[pid]?.lead_min || 7, lead_max: catalog[pid]?.lead_max || catalog[pid]?.lead_days || 10,
     sizes: (catalog[pid]?.sizes || []).map(s => ({ label: s.label, tiers: s.tiers.map(t => ({ qty: String(t.qty), price: String(t.price) })) })),
   }]))
   const [form, setForm] = useState(start)
@@ -84,9 +87,10 @@ function Prices({ catalog, onSaved }) {
       {PRODUCTS.map(([pid, name]) => (
         <div key={pid} style={{ ...panel, padding: '18px 22px' }}>
           <div style={{ fontFamily: SERIF, fontSize: '19px', color: C.ink, marginBottom: '10px' }}>{name}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: '10px', marginBottom: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px', gap: '10px', marginBottom: '12px' }}>
             <div><span style={label}>DESCRIPTION (shown to brands)</span><input style={input} value={form[pid].description} maxLength={300} onChange={e => set(pid, p => ({ ...p, description: e.target.value }))} placeholder={{ hang_tag: 'e.g. 350 GSM matte card, printed both sides, with string', poly_bag: 'e.g. 60 micron, tamper-proof seal, printed one side', thank_you_card: 'e.g. 350 GSM card, printed one side' }[pid]} /></div>
-            <div><span style={label}>MADE IN (DAYS)</span><input style={input} type="number" min="1" max="60" value={form[pid].lead_days} onChange={e => set(pid, p => ({ ...p, lead_days: e.target.value }))} /></div>
+            <div><span style={label}>MADE IN · FROM (DAYS)</span><input style={input} type="number" min="1" max="90" value={form[pid].lead_min} onChange={e => set(pid, p => ({ ...p, lead_min: e.target.value }))} /></div>
+            <div><span style={label}>TO (DAYS)</span><input style={input} type="number" min="1" max="90" value={form[pid].lead_max} onChange={e => set(pid, p => ({ ...p, lead_max: e.target.value }))} /></div>
           </div>
           {form[pid].sizes.map((s, si) => (
             <div key={si} style={{ border: `1px solid ${C.ruleSoft}`, borderRadius: '10px', padding: '12px', marginBottom: '10px' }}>
@@ -97,9 +101,9 @@ function Prices({ catalog, onSaved }) {
               {s.tiers.map((t, ti) => (
                 <div key={ti} style={{ display: 'grid', gridTemplateColumns: '140px 160px auto 1fr', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
                   <input style={input} type="number" min="1" value={t.qty} placeholder="Quantity" onChange={e => set(pid, p => { p.sizes[si].tiers[ti].qty = e.target.value; return p })} />
-                  <input style={input} type="number" min="1" value={t.price} placeholder="Total price ₹" onChange={e => set(pid, p => { p.sizes[si].tiers[ti].price = e.target.value; return p })} />
+                  <input style={input} type="number" min="1" value={t.price} placeholder="Total ₹ (plus GST)" onChange={e => set(pid, p => { p.sizes[si].tiers[ti].price = e.target.value; return p })} />
                   <button style={{ ...button, padding: '6px 12px' }} onClick={() => set(pid, p => { p.sizes[si].tiers.splice(ti, 1); return p })}>✕</button>
-                  <span style={{ fontSize: '12px', color: C.muted }}>{Number(t.qty) > 0 && Number(t.price) > 0 ? `${rupees(Number(t.price) / Number(t.qty))} each` : ''}</span>
+                  <span style={{ fontSize: '12px', color: C.muted }}>{Number(t.qty) > 0 && Number(t.price) > 0 ? `${rupees(Number(t.price) / Number(t.qty))} each + GST` : ''}</span>
                 </div>
               ))}
               <button style={{ ...button, padding: '6px 12px', fontSize: '12px' }} onClick={() => set(pid, p => { p.sizes[si].tiers.push({ qty: '', price: '' }); return p })}>+ Quantity tier</button>
