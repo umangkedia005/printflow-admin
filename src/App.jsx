@@ -280,6 +280,8 @@ function AdminDashboard({ user }) {
   async function handleStatusChange(order, nextStatus) {
     if (order.international && ['printing', 'shipped'].includes(nextStatus)
       && !window.confirm(`This is an international order (${order.international}). We only ship within India for now, and no shipping was charged for it.\n\nMove it to ${nextStatus} anyway?`)) return
+    if (order.shopify_cancelled_at && ['printing', 'shipped'].includes(nextStatus)
+      && !window.confirm(`This order was cancelled on Shopify.\n\nMove it to ${nextStatus} anyway?`)) return
     // Shipping asks for the courier and tracking first.
     if (nextStatus === 'shipped') { setShipError(''); setShipping(order); return }
     setUpdatingId(order.order_id)
@@ -434,6 +436,7 @@ function AdminDashboard({ user }) {
                               </div>
                               {o.cod && !o.rto && <div title="Book this parcel in ProShip as COD with this amount" style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>COD · collect {money(o.cod.amount)}</div>}
                               {o.rto && <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.muted, background: C.wash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>Returned (RTO)</div>}
+                              {o.shopify_cancelled_at && <div title="Cancelled on Shopify. Stop the parcel if it hasn't shipped; any wallet charge isn't refunded automatically." style={{ marginTop: '4px', marginRight: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>Cancelled on Shopify</div>}
                               {o.international && <div title="We ship within India in rupees only for now" style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>International · {o.international}</div>}
                             </td>
                             <td style={td}>
@@ -478,7 +481,7 @@ function AdminDashboard({ user }) {
                                   Brand invoice
                                 </button>
                               )}
-                              {!o.sample && !o.international && (o.source === 'manual' ? o.selling_total != null : !!o.print_charges) && (
+                              {!o.sample && !o.international && !o.shopify_cancelled_at && (o.source === 'manual' ? o.selling_total != null : !!o.print_charges) && (
                                 <button onClick={() => openInvoice('customer', o.order_id).catch(e => alert(e.message))} title="At the selling price: put this one in the parcel"
                                   style={{ display: 'block', marginLeft: 'auto', marginTop: '6px', background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                   Customer invoice
