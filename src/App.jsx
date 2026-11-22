@@ -7,6 +7,7 @@ import StockAdmin from './StockAdmin'
 import BrandingAdmin from './BrandingAdmin'
 import InvoiceSettingsAdmin from './InvoiceSettingsAdmin'
 import EnquiriesAdmin from './EnquiriesAdmin'
+import CodAdmin from './CodAdmin'
 import GarmentsAdmin from './GarmentsAdmin'
 import { C, SERIF, SANS, panel, input, button, primary, outline, eyebrow, th, td, empty } from './theme'
 import Heading from './Heading'
@@ -14,7 +15,7 @@ import PrintSheet from './PrintSheet'
 import ShipDialog from './ShipDialog'
 
 const provider = new GoogleAuthProvider()
-import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore, openInvoice } from './api'
+import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore, openInvoice, markRto } from './api'
 
 const ALLOWED_EMAILS = [
   'umangkedia5@gmail.com',
@@ -240,6 +241,22 @@ function AdminDashboard({ user }) {
     setProductsLoading(false)
   }
 
+  // The parcel came back: the brand pays the flat return charge from its
+  // wallet, and a COD order pays nothing out.
+  async function handleRto(order) {
+    const name = (order.order_name || order.order_id).replace('#', '')
+    if (!window.confirm(`Mark order ${name} as returned (RTO)?\n\nThe return charge from Settings is taken from the brand's wallet${order.cod ? ' and nothing is paid out for this COD order' : ''}. This can't be undone.`)) return
+    setUpdatingId(order.order_id)
+    try {
+      const res = await markRto(order.order_id)
+      setOrders(prev => prev.map(o => o.order_id === order.order_id ? { ...o, rto: res.rto, ...(o.cod ? { cod: { ...o.cod, stage: 'rto' } } : {}) } : o))
+    } catch (e) {
+      alert(e.message)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   async function loadData() {
     setLoading(true)
     const [o, s] = await Promise.all([fetchAllOrders(), fetchAllStores()])
@@ -324,6 +341,7 @@ function AdminDashboard({ user }) {
     { id: 'catalogue', label: 'Catalogue' },
     { id: 'stock', label: 'Stock' },
     { id: 'branding', label: 'Branding' },
+    { id: 'cod', label: 'COD' },
     { id: 'enquiries', label: 'Enquiries' },
     { id: 'invoices', label: 'Invoices' },
     { id: 'garments', label: 'Garments' },
@@ -412,6 +430,8 @@ function AdminDashboard({ user }) {
                                 {o.sample && <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.blue, background: C.blueWash, padding: '1px 7px', borderRadius: '99px', marginLeft: '4px' }}>Sample</span>}
                                 {o.reference && <span style={{ fontSize: '11px', color: C.faint }}>Ref {o.reference}</span>}
                               </div>
+                              {o.cod && !o.rto && <div title="Book this parcel in ProShip as COD with this amount" style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>COD · collect {money(o.cod.amount)}</div>}
+                              {o.rto && <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.muted, background: C.wash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>Returned (RTO)</div>}
                             </td>
                             <td style={td}>
                               <div style={{ fontWeight: 500 }}>{o.bill_to?.name || o.bill_to?.email || (o.shop_domain || '').replace('.myshopify.com', '') || '—'}</div>
@@ -432,6 +452,12 @@ function AdminDashboard({ user }) {
                                 <button onClick={() => handleStatusChange(o, next)} disabled={busy}
                                   style={{ ...(stage === 'queued' ? outline : primary), padding: '7px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                   {busy ? 'Saving…' : ACTION_LABEL[next]}
+                                </button>
+                              )}
+                              {['shipped', 'delivered'].includes(o.status) && !o.rto && !['remitted', 'paid'].includes(o.cod?.stage) && (
+                                <button onClick={() => handleRto(o)} disabled={busy}
+                                  style={{ display: 'block', marginLeft: 'auto', marginTop: '6px', background: 'none', border: 'none', padding: 0, color: C.red, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                  Mark RTO
                                 </button>
                               )}
                               {(o.source === 'manual' || o.print_charges) && (
@@ -528,6 +554,7 @@ function AdminDashboard({ user }) {
         {activeTab === 'catalogue' && <CatalogueAdmin />}
         {activeTab === 'stock' && <StockAdmin />}
         {activeTab === 'branding' && <BrandingAdmin />}
+        {activeTab === 'cod' && <CodAdmin />}
         {activeTab === 'enquiries' && <EnquiriesAdmin />}
         {activeTab === 'invoices' && <InvoiceSettingsAdmin />}
         {activeTab === 'garments' && <GarmentsAdmin />}

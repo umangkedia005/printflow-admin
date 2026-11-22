@@ -13,6 +13,8 @@ const FIELDS = [
   ['sample_discount_pct', 'Sample discount % (Book a Sample)'],
   ['print_base', 'Printing: ₹ per printed side'],
   ['print_per_sq_in', 'Printing: ₹ per square inch'],
+  ['cod_fee', 'COD fee ₹ per order (from the payout)'],
+  ['rto_charge', 'Return (RTO) charge ₹ to the brand'],
 ]
 
 // Charges for orders merchants create themselves (Orders → Create order).
@@ -67,6 +69,7 @@ export default function SettingsAdmin() {
               <div><span style={{ color: C.ink, fontWeight: 500 }}>Example:</span> 1 item ships for ₹{ship('surface', 1)} surface or ₹{ship('air', 1)} air; 3 items for ₹{ship('surface', 3)} or ₹{ship('air', 3)}.</div>
               <div>GST is added on top: {values.product_tax_pct}% on products and {values.shipping_tax_pct}% on shipping.</div>
               <div><span style={{ color: C.ink, fontWeight: 500 }}>Printing (DTF), per printed side:</span> ₹{values.print_base} + ₹{values.print_per_sq_in} × the design's size in square inches. For example {[[8.37, 4.97], [12.62, 7.5], [12, 16]].map(([w, h]) => `${w}×${h} in = ₹${Math.round(Number(values.print_base) + Number(values.print_per_sq_in) * w * h)}`).join(' · ')}. A print area in Catalogue can override these.</div>
+              <div><span style={{ color: C.ink, fontWeight: 500 }}>Cash on delivery:</span> a brand is paid what the courier collects minus ₹{values.cod_fee} per COD order. A returned parcel (RTO) charges ₹{values.rto_charge} to the brand's wallet. New orders keep the fee in force when they were placed.</div>
             </div>
           </>
         )}

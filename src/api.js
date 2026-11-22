@@ -138,6 +138,11 @@ export const fetchInvoiceSettings = () => adminCall('/admin/invoice-settings')
 export const saveInvoiceSettings = values => adminCall('/admin/invoice-settings', values)
 // Enquiries from the dashboard's Bulk & Custom page.
 export const fetchEnquiries = () => adminCall('/admin/enquiries')
+// Cash on delivery: remittances from ProShip, payouts to brands, returns.
+export const fetchCod = () => adminCall('/admin/cod')
+export const markCodRemitted = (orderIds, date, utr) => adminCall('/admin/cod/remitted', { order_ids: orderIds, date, utr })
+export const payOutCod = (email, orderIds, date, utr) => adminCall('/admin/cod/payout', { email, order_ids: orderIds, date, utr })
+export const markRto = orderId => adminCall('/admin/rto', { order_id: orderId })
 export const updateEnquiry = (enquiryId, status, note) => adminCall('/admin/enquiries/update', { enquiry_id: enquiryId, status, note })
 export const fetchAdminInvoice = (kind, id) => adminCall(`/admin/invoice?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`)
 
