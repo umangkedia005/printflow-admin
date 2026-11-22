@@ -411,9 +411,9 @@ function AdminDashboard({ user }) {
                 <div style={empty}>{orders.length ? 'No orders match.' : 'No orders yet.'}</div>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1040px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1160px' }}>
                     <thead>
-                      <tr>{['', 'Order', 'Bill to (brand)', 'Ship to', 'Print files', 'Amount', 'Status', 'Placed', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
+                      <tr>{['', 'Order', 'Bill to (brand)', 'Ship to', 'Print files', 'Brand paid', 'Selling price', 'Status', 'Placed', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr>
                     </thead>
                     <tbody>
                       {filteredOrders.map((o, i) => {
@@ -444,11 +444,15 @@ function AdminDashboard({ user }) {
                               <div style={{ fontSize: '12px', color: C.muted }}>{shipTo(o)}</div>
                             </td>
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
+                            <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                              {/* Manual: the wallet total. Shopify: the print charge (total_price is the customer's price). */}
+                              {o.source === 'manual' ? money(o.total_price, o.currency) : o.print_charges ? money(o.print_charges.reduce((sum, c) => sum + Number(c.amount || 0), 0), o.currency) : <span style={{ color: C.muted, fontWeight: 400, fontSize: '12px' }}>Not paid yet</span>}
+                            </td>
                             <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                              {/* Manual: the wallet total. Shopify: total_price is the customer's price, so it's the selling price. */}
-                              <div style={{ fontWeight: 500 }}>{o.source === 'manual' ? money(o.total_price, o.currency) : o.print_charges ? money(o.print_charges.reduce((sum, c) => sum + Number(c.amount || 0), 0), o.currency) : 'Not paid yet'}</div>
-                              <div style={{ fontSize: '11px', color: C.muted }}>Brand paid</div>
-                              {(o.source !== 'manual' || o.selling_total != null) && <div style={{ fontSize: '12px', color: C.inkSoft, marginTop: '4px' }}>Sells at {money(o.source === 'manual' ? o.selling_total : o.total_price, o.currency)}</div>}
+                              {o.sample ? <span style={{ color: C.muted, fontSize: '12px' }}>Sample</span>
+                                : o.source !== 'manual' ? money(o.total_price, o.currency)
+                                : o.selling_total != null ? money(o.selling_total, o.currency)
+                                : <span title="Placed before selling prices were saved" style={{ color: C.muted, fontSize: '12px' }}>Not saved</span>}
                             </td>
                             <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}{o.shipment_status && <div style={{ fontSize: '11px', color: C.gold, marginTop: '2px' }}>ProShip: {o.shipment_status}</div>}{(o.shipping_method || o.breakdown?.shipping_method) && <div style={{ fontSize: '11px', fontWeight: 600, color: C.inkSoft, marginTop: '3px' }}>{(o.shipping_method || o.breakdown.shipping_method) === 'air' ? 'Air' : 'Surface'}</div>}</td>
                             <td style={{ ...td, color: C.muted, whiteSpace: 'nowrap', fontSize: '12px' }}>{longDate(o.created_at)}</td>
@@ -476,6 +480,9 @@ function AdminDashboard({ user }) {
                                   style={{ display: 'block', marginLeft: 'auto', marginTop: '6px', background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                   Customer invoice
                                 </button>
+                              )}
+                              {!o.sample && o.source === 'manual' && o.selling_total == null && (
+                                <div title="This order was placed before selling prices were saved, so it can't have a customer invoice." style={{ marginTop: '6px', color: C.muted, fontSize: '11px', whiteSpace: 'nowrap' }}>No customer invoice</div>
                               )}
                             </td>
                           </tr>
