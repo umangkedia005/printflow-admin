@@ -8,7 +8,9 @@ const FIELDS = [
   ['surface_extra', 'Surface: each extra item ₹'],
   ['air_first', 'Air: first item ₹'],
   ['air_extra', 'Air: each extra item ₹'],
-  ['product_tax_pct', 'GST on products %'],
+  ['product_tax_pct', 'GST on clothes up to the limit %'],
+  ['product_tax_high_pct', 'GST on clothes above the limit %'],
+  ['product_tax_threshold', 'GST limit: ₹ per piece'],
   ['shipping_tax_pct', 'GST on shipping %'],
   ['sample_discount_pct', 'Sample discount % (Book a Sample)'],
   ['print_base', 'Printing: ₹ per printed side'],
@@ -67,7 +69,7 @@ export default function SettingsAdmin() {
             </div>
             <div style={{ borderTop: `1px solid ${C.ruleSoft}`, marginTop: '20px', paddingTop: '16px', fontSize: '13px', color: C.muted, lineHeight: 1.7 }}>
               <div><span style={{ color: C.ink, fontWeight: 500 }}>Example:</span> 1 item ships for ₹{ship('surface', 1)} surface or ₹{ship('air', 1)} air; 3 items for ₹{ship('surface', 3)} or ₹{ship('air', 3)}.</div>
-              <div>GST is added on top: {values.product_tax_pct}% on products and {values.shipping_tax_pct}% on shipping.</div>
+              <div>GST is added on top: {values.product_tax_pct}% on clothes up to ₹{values.product_tax_threshold} per piece, {values.product_tax_high_pct}% above it, and {values.shipping_tax_pct}% on shipping. Prepaid, COD and part-paid orders all follow this.</div>
               <div><span style={{ color: C.ink, fontWeight: 500 }}>Printing (DTF), per printed side:</span> ₹{values.print_base} + ₹{values.print_per_sq_in} × the design's size in square inches. For example {[[8.37, 4.97], [12.62, 7.5], [12, 16]].map(([w, h]) => `${w}×${h} in = ₹${Math.round(Number(values.print_base) + Number(values.print_per_sq_in) * w * h)}`).join(' · ')}. A print area in Catalogue can override these.</div>
               <div><span style={{ color: C.ink, fontWeight: 500 }}>Cash on delivery:</span> a brand is paid what the courier collects minus ₹{values.cod_fee} per COD order. A returned parcel (RTO) charges ₹{values.rto_charge} to the brand's wallet. New orders keep the fee in force when they were placed.</div>
             </div>
