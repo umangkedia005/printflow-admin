@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchCod, markCodRemitted, payOutCod } from './api'
+import { fetchCod, markCodRemitted, payOutCod, resolveCodPaidCheck } from './api'
 import { C, SERIF, panel, input, label, button, primary, th, td, empty } from './theme'
 import Heading from './Heading'
 
@@ -134,6 +134,25 @@ export default function CodAdmin() {
     }
   }
 
+  const toConfirm = orders.filter(r => r.paid_check && !['remitted', 'paid', 'rto'].includes(r.stage))
+
+  async function resolvePaid(row, decision) {
+    const question = decision === 'keep'
+      ? `Keep collecting ${money(row.amount)} on delivery for ${row.order_name}?`
+      : `Confirm the customer really paid online for ${row.order_name}?\n\nCOD of ${money(row.amount)} will be removed. If it's booked in ProShip, change it to prepaid there too.`
+    if (!window.confirm(question)) return
+    setBusy(true); setNotice(''); setError('')
+    try {
+      await resolveCodPaidCheck(row.order_id, decision)
+      setNotice(decision === 'keep' ? `${row.order_name}: COD stays on.` : `${row.order_name}: COD removed. Update ProShip if it was already booked.`)
+      load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const search = q.trim().toLowerCase()
   const allRows = orders.filter(r => !search || [r.order_name, r.order_id, r.customer, r.owner, r.awb, r.payout?.utr, r.remittance?.utr].some(v => String(v || '').toLowerCase().includes(search)))
 
@@ -163,6 +182,22 @@ export default function CodAdmin() {
       {error && <div style={{ ...panel, padding: '12px 16px', color: C.red, background: C.redWash, marginBottom: '14px' }}>{error}</div>}
       {notice && <div style={{ ...panel, padding: '12px 16px', color: C.green, background: C.greenWash, marginBottom: '14px' }}>{notice}</div>}
       {!data && !error && <div style={empty}>Loading…</div>}
+
+      {toConfirm.length > 0 && (
+        <div style={{ ...panel, padding: '14px 18px', marginBottom: '14px', background: C.goldWash }}>
+          <div style={{ fontFamily: SERIF, fontSize: '19px' }}>Confirm {toConfirm.length} payment{toConfirm.length === 1 ? '' : 's'}</div>
+          <div style={{ fontSize: '13px', color: C.muted, margin: '2px 0 10px', lineHeight: 1.5 }}>Shopify shows these COD orders as paid before delivery. The courier keeps collecting until you confirm. Check with the brand first.</div>
+          {toConfirm.map(r => (
+            <div key={r.order_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', padding: '8px 0', borderTop: `1px solid ${C.ruleSoft}`, fontSize: '13px' }}>
+              <span><b>{r.order_name}</b> · {r.owner || '—'} · collect <b>{money(r.amount)}</b></span>
+              <span style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button style={primary} disabled={busy} onClick={() => resolvePaid(r, 'keep')}>Keep collecting</button>
+                {r.status !== 'delivered' && <button style={button} disabled={busy} onClick={() => resolvePaid(r, 'paid_online')}>Customer paid online</button>}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {data && view === 'courier' && (
         withCourier.length === 0 ? <div style={{ ...panel, ...empty }}>No delivered COD orders waiting for ProShip.</div> : (

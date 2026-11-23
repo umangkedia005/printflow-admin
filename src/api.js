@@ -140,6 +140,7 @@ export const saveInvoiceSettings = values => adminCall('/admin/invoice-settings'
 export const fetchEnquiries = () => adminCall('/admin/enquiries')
 // Cash on delivery: remittances from ProShip, payouts to brands, returns.
 export const fetchCod = () => adminCall('/admin/cod')
+export const resolveCodPaidCheck = (orderId, decision) => adminCall('/admin/cod/paid-check', { order_id: orderId, decision })
 export const markCodRemitted = (orderIds, date, utr) => adminCall('/admin/cod/remitted', { order_ids: orderIds, date, utr })
 export const payOutCod = (email, orderIds, date, utr) => adminCall('/admin/cod/payout', { email, order_ids: orderIds, date, utr })
 export const markRto = orderId => adminCall('/admin/rto', { order_id: orderId })
