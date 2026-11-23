@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchSettings, saveSettings, fetchAccountWallet, creditWallet } from './api'
+import { fetchSettings, saveSettings, fetchAccountWallet, creditWallet, setReviewMode } from './api'
 import { C, SERIF, panel, input, label, primary, button } from './theme'
 import Heading from './Heading'
 
@@ -17,6 +17,7 @@ const FIELDS = [
   ['print_per_sq_in', 'Printing: ₹ per square inch'],
   ['cod_fee', 'COD fee ₹ per order (from the payout)'],
   ['rto_charge', 'Return (RTO) charge ₹ to the brand'],
+  ['review_print_cost', 'App Review: test print cost ₹'],
 ]
 
 // Charges for orders merchants create themselves (Orders → Create order).
@@ -130,6 +131,17 @@ function WalletCredit() {
     } catch (err) { setError(err.message) } finally { setBusy(false) }
   }
 
+  async function toggleReview() {
+    const on = !account.review_mode
+    if (on && !window.confirm(`Turn on App Review mode for ${account.email}?\n\nUse this only for the test login you give Shopify's reviewers. Its orders get TEST invoices and are never printed.`)) return
+    setBusy(true); setError(''); setNotice('')
+    try {
+      const res = await setReviewMode(account.email, on)
+      setAccount(a => ({ ...a, review_mode: res.review_mode }))
+      setNotice(`App Review mode is ${res.review_mode ? 'on' : 'off'} for ${res.email}.`)
+    } catch (err) { setError(err.message) } finally { setBusy(false) }
+  }
+
   return (
     <div style={{ marginTop: '32px' }}>
       <Heading eyebrow="Accounts" title="Wallet credit" />
@@ -147,6 +159,13 @@ function WalletCredit() {
             Balance <strong style={{ color: C.ink }}>₹{Number(account.balance)}</strong>
             {account.has_wallet === false && <span style={{ color: C.muted }}> · no wallet yet (it's created with the first credit)</span>}
             {account.stores?.length > 0 && <div style={{ color: C.muted }}>Linked stores: {account.stores.join(', ')}</div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', background: account.review_mode ? C.goldWash : C.wash, borderRadius: '10px', padding: '10px 14px', margin: '10px 0', maxWidth: '720px' }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <strong style={{ color: C.ink }}>App Review mode: {account.review_mode ? 'On' : 'Off'}</strong>
+                <div style={{ fontSize: '12px', color: C.muted }}>For Shopify's reviewer login only. Test orders work in any currency at the test print cost, get TEST invoices, and are never printed.</div>
+              </div>
+              <button style={account.review_mode ? button : primary} disabled={busy} onClick={toggleReview}>{account.review_mode ? 'Turn off' : 'Turn on'}</button>
+            </div>
             <AccountDetails account={account} />
           </div>
         )}

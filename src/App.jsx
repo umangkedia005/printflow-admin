@@ -278,7 +278,9 @@ function AdminDashboard({ user }) {
   }
 
   async function handleStatusChange(order, nextStatus) {
-    if (order.international && ['printing', 'shipped'].includes(nextStatus)
+    if (order.review && ['printing', 'shipped'].includes(nextStatus)
+      && !window.confirm('This is a test order from Shopify App Review. Do not print or ship it.\n\nMove it anyway?')) return
+    if (!order.review && order.international && ['printing', 'shipped'].includes(nextStatus)
       && !window.confirm(`This is an international order (${order.international}). We only ship within India for now, and no shipping was charged for it.\n\nMove it to ${nextStatus} anyway?`)) return
     if (order.shopify_cancelled_at && ['printing', 'shipped'].includes(nextStatus)
       && !window.confirm(`This order was cancelled on Shopify.\n\nMove it to ${nextStatus} anyway?`)) return
@@ -436,8 +438,9 @@ function AdminDashboard({ user }) {
                               </div>
                               {o.cod && !o.rto && <div title="Book this parcel in ProShip as COD with this amount" style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>COD · collect {money(o.cod.amount)}</div>}
                               {o.rto && <div style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.muted, background: C.wash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>Returned (RTO)</div>}
+                              {o.review && <div title="Test order from Shopify's App Review. Do not print or ship it." style={{ marginTop: '4px', marginRight: '4px', fontSize: '11px', fontWeight: 700, color: C.blue, background: C.blueWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>App Review test · do not print</div>}
                               {o.shopify_cancelled_at && <div title="Cancelled on Shopify. Stop the parcel if it hasn't shipped; any wallet charge isn't refunded automatically." style={{ marginTop: '4px', marginRight: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>Cancelled on Shopify</div>}
-                              {o.international && <div title="We ship within India in rupees only for now" style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>International · {o.international}</div>}
+                              {o.international && !o.review && <div title="We ship within India in rupees only for now" style={{ marginTop: '4px', fontSize: '11px', fontWeight: 700, color: C.red, background: C.redWash, padding: '2px 8px', borderRadius: '6px', display: 'inline-block' }}>International · {o.international}</div>}
                             </td>
                             <td style={td}>
                               <div style={{ fontWeight: 500 }}>{o.bill_to?.name || o.bill_to?.email || (o.shop_domain || '').replace('.myshopify.com', '') || '—'}</div>

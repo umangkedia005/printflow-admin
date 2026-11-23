@@ -235,6 +235,9 @@ export async function creditWallet(email, amount, note) {
   return data
 }
 
+// App Review mode for the login given to Shopify's reviewers.
+export const setReviewMode = (email, on) => adminCall('/admin/review-mode', { email, on })
+
 // Detach a store from its account so another account can link it.
 export async function unlinkStore(shop) {
   const res = await fetch(`${BASE_URL}/admin/stores/unlink`, {
