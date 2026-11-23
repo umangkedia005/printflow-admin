@@ -162,6 +162,7 @@ export default function PrintSheet({ order, onClose }) {
           <div>
             <div style={{ fontFamily: SERIF, fontSize: '22px', color: C.ink }}>Print details · {(order.order_name || order.order_id).replace('#', '')}</div>
             {(order.source === 'manual' || order.print_charges) && <InvoiceLink order={order} />}
+            {(order.shipping_method || order.breakdown?.shipping_method) && <div style={{ display: 'inline-block', marginTop: '6px', fontSize: '12px', fontWeight: 700, color: C.blue, background: C.blueWash, padding: '3px 10px', borderRadius: '99px' }}>Ship by {(order.shipping_method || order.breakdown.shipping_method) === 'air' ? 'Air' : 'Surface'}</div>}
             {order.branding && (
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
                 {order.branding.hang_tag && <span style={{ fontSize: '11px', fontWeight: 700, color: C.green, background: C.greenWash, padding: '3px 10px', borderRadius: '99px' }}>Attach the brand's hang tag to every piece</span>}

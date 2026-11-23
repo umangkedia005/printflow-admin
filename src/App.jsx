@@ -34,6 +34,7 @@ const ACTION_LABEL = { printing: 'Start print', shipped: 'Mark shipped', deliver
 // New orders arrive with Shopify's payment status ("paid", "pending"...) until
 // someone moves them along; for the print floor they're simply queued.
 const stageOf = order => (STATUS[order.status] ? order.status : 'queued')
+const shipMethod = order => order.shipping_method || order.breakdown?.shipping_method || null
 
 function customerName(order) {
   const raw = order.raw || {}
@@ -164,7 +165,7 @@ function ProductRow({ shop, product, onSaved }) {
         <input value={factorySku} onChange={e => setFactorySku(e.target.value)} placeholder="GILDAN-64000-BLK" style={{ ...input, width: '180px', fontFamily: 'monospace', fontSize: '12px' }} />
       </td>
       <td style={td}>
-        <input type="number" value={fulfillmentCost} onChange={e => setFulfillmentCost(e.target.value)} placeholder="₹" style={{ ...input, width: '100px' }} />
+        <input type="number" value={fulfillmentCost} onChange={e => setFulfillmentCost(e.target.value)} placeholder="₹ before GST" title="Per piece, before GST and shipping (those are added when the brand pays)" style={{ ...input, width: '120px' }} />
       </td>
       <td style={td}>
         <button onClick={handleSave} disabled={saving || !dirty} style={dirty ? primary : button}>{saving ? 'Saving…' : 'Save'}</button>
@@ -217,6 +218,7 @@ function AdminDashboard({ user }) {
   const [shipping, setShipping] = useState(null)
   const [shipError, setShipError] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterShip, setFilterShip] = useState('all')
   const [search, setSearch] = useState('')
   const [productShop, setProductShop] = useState('')
   const [products, setProducts] = useState([])
@@ -318,7 +320,8 @@ function AdminDashboard({ user }) {
     .filter(o => {
       const matchStatus = filterStatus === 'all' || stageOf(o) === filterStatus
       const matchSearch = !q || [o.order_name, o.shop_domain, o.account_email, o.email, customerName(o), o.bill_to?.name, o.bill_to?.email].some(v => (v || '').toLowerCase().includes(q))
-      return matchStatus && matchSearch
+      const matchShip = filterShip === 'all' || shipMethod(o) === filterShip
+      return matchStatus && matchSearch && matchShip
     })
     .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
 
@@ -405,6 +408,12 @@ function AdminDashboard({ user }) {
                     {s === 'all' ? 'All' : STATUS[s].label}
                   </button>
                 ))}
+                <span style={{ width: '1px', alignSelf: 'stretch', background: C.rule, margin: '0 2px' }} />
+                {[['all', 'Any shipping'], ['air', 'Air'], ['surface', 'Surface']].map(([id, text]) => (
+                  <button key={id} onClick={() => setFilterShip(id)} aria-pressed={filterShip === id} style={{ ...(filterShip === id ? primary : button), padding: '7px 14px', fontSize: '12px' }}>
+                    {text}{id !== 'all' ? ` ${orders.filter(o => shipMethod(o) === id).length}` : ''}
+                  </button>
+                ))}
               </div>
               <button onClick={loadData} style={{ ...button, padding: '7px 14px', fontSize: '12px' }}>Refresh</button>
             </div>
@@ -457,7 +466,8 @@ function AdminDashboard({ user }) {
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>
                               {/* Manual: the wallet total. Shopify: the print charge (total_price is the customer's price). */}
-                              {o.source === 'manual' ? money(o.total_price, o.currency) : o.print_charges ? money(o.print_charges.reduce((sum, c) => sum + Number(c.amount || 0), 0), 'INR') : <span style={{ color: C.muted, fontWeight: 400, fontSize: '12px' }}>Not paid yet</span>}
+                              {o.source === 'manual' ? money(o.total_price, o.currency) : o.breakdown?.total != null ? money(o.breakdown.total, 'INR') : o.print_charges ? money(o.print_charges.reduce((sum, c) => sum + Number(c.amount || 0), 0), 'INR') : <span style={{ color: C.muted, fontWeight: 400, fontSize: '12px' }}>Not paid yet</span>}
+                              {o.breakdown?.total != null && <div title="Product + GST + shipping + GST on shipping" style={{ fontSize: '10.5px', fontWeight: 400, color: C.muted, marginTop: '3px', lineHeight: 1.45 }}>Product {money(Number(o.breakdown.subtotal) - Number(o.breakdown.sample_discount || 0), 'INR')} · GST {money(o.breakdown.product_tax, 'INR')}<br />Ship {money(o.breakdown.shipping, 'INR')} · GST {money(o.breakdown.shipping_tax, 'INR')}</div>}
                             </td>
                             <td style={{ ...td, whiteSpace: 'nowrap' }}>
                               {o.sample ? <span style={{ color: C.muted, fontSize: '12px' }}>Sample</span>
@@ -465,7 +475,7 @@ function AdminDashboard({ user }) {
                                 : o.selling_total != null ? money(o.selling_total, o.currency)
                                 : <span title="Placed before selling prices were saved" style={{ color: C.muted, fontSize: '12px' }}>Not saved</span>}
                             </td>
-                            <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}{o.shipment_status && <div style={{ fontSize: '11px', color: C.gold, marginTop: '2px' }}>ProShip: {o.shipment_status}</div>}{(o.shipping_method || o.breakdown?.shipping_method) && <div style={{ fontSize: '11px', fontWeight: 600, color: C.inkSoft, marginTop: '3px' }}>{(o.shipping_method || o.breakdown.shipping_method) === 'air' ? 'Air' : 'Surface'}</div>}</td>
+                            <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}{o.shipment_status && <div style={{ fontSize: '11px', color: C.gold, marginTop: '2px' }}>ProShip: {o.shipment_status}</div>}{shipMethod(o) && <div style={{ display: 'inline-block', fontSize: '11px', fontWeight: 700, color: shipMethod(o) === 'air' ? C.blue : C.inkSoft, background: shipMethod(o) === 'air' ? C.blueWash : C.wash, padding: '1px 8px', borderRadius: '6px', marginTop: '4px' }}>{shipMethod(o) === 'air' ? 'Air' : 'Surface'}</div>}</td>
                             <td style={{ ...td, color: C.muted, whiteSpace: 'nowrap', fontSize: '12px' }}>{longDate(o.created_at)}</td>
                             <td style={{ ...td, textAlign: 'right' }}>
                               {unpaid && <div title="The brand has to click Send to Print Factory in its dashboard, which charges its wallet." style={{ fontSize: '12px', fontWeight: 600, color: C.gold, whiteSpace: 'nowrap' }}>Waiting for brand to pay</div>}
@@ -559,7 +569,7 @@ function AdminDashboard({ user }) {
               </select>
               <button onClick={loadProducts} style={button}>Refresh</button>
             </Heading>
-            <p style={{ color: C.muted, fontSize: '13px', marginTop: '-8px', marginBottom: '16px' }}>Factory SKU and fulfilment cost are set here by the studio, not by merchants.</p>
+            <p style={{ color: C.muted, fontSize: '13px', marginTop: '-8px', marginBottom: '16px' }}>Factory SKU and cost are set here by the studio, not by merchants. Enter the cost per piece for product and printing, before GST and shipping: those are added when the brand pays.</p>
             <div style={{ ...panel, overflow: 'hidden' }}>
               {productsLoading ? (
                 <div style={empty}>Loading products…</div>
@@ -570,7 +580,7 @@ function AdminDashboard({ user }) {
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '820px' }}>
-                    <thead><tr>{['Product', 'Print file', 'Factory SKU', 'Fulfilment cost', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
+                    <thead><tr>{['Product', 'Print file', 'Factory SKU', 'Cost per piece', ''].map((h, i) => <th key={i} style={th}>{h}</th>)}</tr></thead>
                     <tbody>
                       {products.map(p => <ProductRow key={p.id} shop={productShop} product={p} onSaved={loadProducts} />)}
                     </tbody>
