@@ -15,7 +15,7 @@ import PrintSheet from './PrintSheet'
 import ShipDialog from './ShipDialog'
 
 const provider = new GoogleAuthProvider()
-import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore, openInvoice, markRto } from './api'
+import { fetchAllOrders, fetchAllStores, updateOrderStatus, fetchProductMappings, updateProductMapping, unlinkStore, openInvoice, openTaxCopy, markRto } from './api'
 
 const ALLOWED_EMAILS = [
   'umangkedia5@gmail.com',
@@ -501,6 +501,15 @@ function AdminDashboard({ user }) {
                                 <button onClick={() => openInvoice('customer', o.order_id).catch(e => alert(e.message))} title="At the selling price: put this one in the parcel"
                                   style={{ display: 'block', marginLeft: 'auto', marginTop: '6px', background: 'none', border: 'none', padding: 0, color: C.blue, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
                                   Customer invoice
+                                </button>
+                              )}
+                              {o.redacted_at && !o.tax_erased_at && o.invoice && !o.invoice.test && (
+                                <button onClick={() => {
+                                  const reason = window.prompt('This customer asked to be erased. The original invoice is kept only for GST records.\n\nWhy do you need it? Your name, the time and this reason are recorded.')
+                                  if (reason?.trim()) openTaxCopy('order', o.order_id, reason.trim()).catch(e => alert(e.message))
+                                }} title="The invoice as issued, for GST records only"
+                                  style={{ display: 'block', marginLeft: 'auto', marginTop: '6px', background: 'none', border: 'none', padding: 0, color: C.muted, textDecoration: 'underline', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                                  Tax copy
                                 </button>
                               )}
                               {!o.sample && o.source === 'manual' && o.selling_total == null && (

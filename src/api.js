@@ -159,6 +159,19 @@ export async function openInvoice(kind, id) {
   }
 }
 
+// The invoice exactly as issued, for a customer who was erased. Each opening
+// is recorded with who, when and why.
+export async function openTaxCopy(kind, id, reason) {
+  const win = window.open('', '_blank')
+  try {
+    const { html } = await adminCall('/admin/invoice/tax-copy', { kind, id, reason })
+    win.document.open(); win.document.write(html); win.document.close()
+  } catch (e) {
+    win.close()
+    throw e
+  }
+}
+
 export async function fetchSettings() {
   const res = await fetch(`${BASE_URL}/admin/settings`, { headers: await adminHeaders() })
   const data = await res.json()
