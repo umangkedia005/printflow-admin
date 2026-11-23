@@ -424,7 +424,9 @@ function AdminDashboard({ user }) {
                     <tbody>
                       {filteredOrders.map((o, i) => {
                         const stage = stageOf(o)
-                        const next = STATUS_NEXT[stage]
+                        // A Shopify order is paid when the brand sends it to print.
+                        const unpaid = o.source !== 'manual' && !o.print_charges && stage === 'queued'
+                        const next = unpaid ? null : STATUS_NEXT[stage]
                         const busy = updatingId === o.order_id
                         return (
                           <tr key={o.order_id || i} className="atelier-row">
@@ -455,7 +457,7 @@ function AdminDashboard({ user }) {
                             <td style={{ ...td, fontSize: '12px' }}><PrintFiles items={o.items} onDetails={() => setPrintSheetFor(o)} /></td>
                             <td style={{ ...td, fontWeight: 500, whiteSpace: 'nowrap' }}>
                               {/* Manual: the wallet total. Shopify: the print charge (total_price is the customer's price). */}
-                              {o.source === 'manual' ? money(o.total_price, o.currency) : o.print_charges ? money(o.print_charges.reduce((sum, c) => sum + Number(c.amount || 0), 0), o.currency) : <span style={{ color: C.muted, fontWeight: 400, fontSize: '12px' }}>Not paid yet</span>}
+                              {o.source === 'manual' ? money(o.total_price, o.currency) : o.print_charges ? money(o.print_charges.reduce((sum, c) => sum + Number(c.amount || 0), 0), 'INR') : <span style={{ color: C.muted, fontWeight: 400, fontSize: '12px' }}>Not paid yet</span>}
                             </td>
                             <td style={{ ...td, whiteSpace: 'nowrap' }}>
                               {o.sample ? <span style={{ color: C.muted, fontSize: '12px' }}>Sample</span>
@@ -466,6 +468,7 @@ function AdminDashboard({ user }) {
                             <td style={td}><StatusLabel stage={stage} />{o.tracking?.number && <div style={{ fontSize: '11px', color: C.muted, marginTop: '3px' }}>{o.tracking.courier ? `${o.tracking.courier} · ` : ''}{o.tracking.number}</div>}{o.shipment_status && <div style={{ fontSize: '11px', color: C.gold, marginTop: '2px' }}>ProShip: {o.shipment_status}</div>}{(o.shipping_method || o.breakdown?.shipping_method) && <div style={{ fontSize: '11px', fontWeight: 600, color: C.inkSoft, marginTop: '3px' }}>{(o.shipping_method || o.breakdown.shipping_method) === 'air' ? 'Air' : 'Surface'}</div>}</td>
                             <td style={{ ...td, color: C.muted, whiteSpace: 'nowrap', fontSize: '12px' }}>{longDate(o.created_at)}</td>
                             <td style={{ ...td, textAlign: 'right' }}>
+                              {unpaid && <div title="The brand has to click Send to Print Factory in its dashboard, which charges its wallet." style={{ fontSize: '12px', fontWeight: 600, color: C.gold, whiteSpace: 'nowrap' }}>Waiting for brand to pay</div>}
                               {next && (
                                 <button onClick={() => handleStatusChange(o, next)} disabled={busy}
                                   style={{ ...(stage === 'queued' ? outline : primary), padding: '7px 16px', fontSize: '12px', whiteSpace: 'nowrap' }}>
